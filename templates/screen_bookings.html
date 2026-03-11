@@ -1,0 +1,104 @@
+<!--
+  CineVerse — Screen Bookings Detail
+  File: templates/screen_bookings.html
+  Description: Shows all confirmed bookings for one screen.
+               Displays: customer name, phone, seats, snacks,
+               payment method, amount, booking status.
+               Accessed by management only.
+-->
+{% extends "base.html" %}
+{% block title %}Screen Bookings — CineVerse{% endblock %}
+{% block extra_css %}
+<style>
+.back-link { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); text-decoration: none; font-size: 12px; letter-spacing: 1px; margin-bottom: 32px; transition: color 0.2s; }
+.back-link:hover { color: var(--gold); }
+.screen-info-card { background: linear-gradient(135deg, #1a1100, #0d0900); border: 1px solid var(--border); border-radius: 2px; padding: 28px; margin-bottom: 36px; display: flex; gap: 40px; flex-wrap: wrap; }
+.sic-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; font-family: 'JetBrains Mono', monospace; }
+.sic-val { font-size: 16px; color: var(--white); }
+.sic-val.big { font-family: 'Cormorant Garamond', serif; font-size: 28px; color: var(--gold); }
+.bookings-table { width: 100%; border-collapse: collapse; }
+.bookings-table th { text-align: left; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); padding: 12px 16px; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; }
+.bookings-table td { padding: 16px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+.bookings-table tr:last-child td { border-bottom: none; }
+.bookings-table tr:hover td { background: rgba(201,168,76,0.03); }
+.customer-name { font-weight: 600; color: var(--white); }
+.customer-phone { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.booking-id { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); }
+.amount { color: var(--gold); font-family: 'Cormorant Garamond', serif; font-size: 18px; }
+.empty-state { text-align: center; padding: 80px 24px; color: var(--muted); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <a href="{{ url_for('management_hall', hall_id=screen['hall_id']) }}" class="back-link">← Back to {{ screen['hall'] }}</a>
+
+    <div class="page-header">
+        <div class="eyebrow">&#9670; Screen Bookings</div>
+        <h1 style="font-family:'Cormorant Garamond',serif; font-size:42px; font-weight:300; color:var(--white);">{{ screen['name'] }}</h1>
+    </div>
+
+    <div class="screen-info-card">
+        <div>
+            <div class="sic-label">Movie</div>
+            <div class="sic-val big">{{ screen['movie'] }}</div>
+        </div>
+        <div>
+            <div class="sic-label">Hall</div>
+            <div class="sic-val">{{ screen['hall'] }}</div>
+        </div>
+        <div>
+            <div class="sic-label">Show Time</div>
+            <div class="sic-val">{{ screen['show_time'] }}</div>
+        </div>
+        <div>
+            <div class="sic-label">Total Bookings</div>
+            <div class="sic-val big">{{ bookings|length }}</div>
+        </div>
+    </div>
+
+    {% if bookings %}
+    <div class="card" style="padding:0; overflow:hidden;">
+        <table class="bookings-table">
+            <thead>
+                <tr>
+                    <th>Booking ID</th>
+                    <th>Customer</th>
+                    <th>Date</th>
+                    <th>Seats</th>
+                    <th>Snacks</th>
+                    <th>Payment</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in bookings %}
+                <tr>
+                    <td><span class="booking-id">#{{ b['id'] }}</span></td>
+                    <td>
+                        <div class="customer-name">{{ b['customer'] }}</div>
+                        <div class="customer-phone">{{ b['phone'] }}</div>
+                    </td>
+                    <td style="color:var(--muted); font-size:12px;">{{ b['booking_date'] }}</td>
+                    <td><strong style="color:var(--white);">{{ b['seats_booked'] }}</strong></td>
+                    <td style="font-size:12px; color:var(--muted);">{{ b['snacks'] or '—' }}</td>
+                    <td><span class="tag tag-gold">{{ (b['method'] or 'card')|upper }}</span></td>
+                    <td><span class="amount">₹{{ b['amount'] or '—' }}</span></td>
+                    <td><span class="tag tag-green">✓ {{ b['status']|upper }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% else %}
+    <div class="card empty-state">
+        <div style="font-size:48px; margin-bottom:16px; opacity:0.3;">🎟</div>
+        <div style="font-family:'Cormorant Garamond',serif; font-size:28px; color:var(--white); margin-bottom:8px;">No Bookings Yet</div>
+        <div style="font-size:13px;">No confirmed bookings found for this screen.</div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

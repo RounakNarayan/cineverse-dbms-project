@@ -1,0 +1,78 @@
+<!--
+  CineVerse — Management Dashboard
+  File: templates/management_dashboard.html
+  Description: Shows all cinema halls across all cities.
+               Manager clicks a hall to manage its screens.
+               Displays top-level stats: total halls, cities.
+-->
+{% extends "base.html" %}
+{% block title %}Management Dashboard — CineVerse{% endblock %}
+{% block extra_css %}
+<style>
+.mgr-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 40px; }
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 40px; }
+.stat-box { background: var(--card); border: 1px solid var(--border); padding: 24px; border-radius: 2px; }
+.stat-num { font-family: 'Cormorant Garamond', serif; font-size: 42px; color: var(--gold); line-height: 1; }
+.stat-lbl { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-top: 8px; }
+.hall-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+.hall-card { background: var(--card); border: 1px solid var(--border); border-radius: 2px; text-decoration: none; color: inherit; display: block; transition: all 0.25s; padding: 28px; position: relative; overflow: hidden; }
+.hall-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, var(--gold-dim), transparent); opacity: 0; transition: opacity 0.25s; }
+.hall-card:hover { border-color: var(--gold); transform: translateY(-3px); }
+.hall-card:hover::before { opacity: 1; }
+.hall-city { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; font-family: 'JetBrains Mono', monospace; }
+.hall-name { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 400; color: var(--white); margin-bottom: 8px; }
+.hall-addr { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.hall-manage { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+@media (max-width: 768px) { .stats-row { grid-template-columns: 1fr 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+
+    <div class="mgr-header">
+        <div>
+            <div class="eyebrow">&#9670; Management Portal</div>
+            <h1 style="font-family:'Cormorant Garamond',serif; font-size:48px; font-weight:300; color:var(--white);">Control Dashboard</h1>
+            <p style="color:var(--muted); font-size:13px; margin-top:8px;">Logged in as Manager: <strong style="color:var(--gold);">{{ manager }}</strong></p>
+        </div>
+        <a href="{{ url_for('logout') }}" class="btn btn-outline btn-sm">Logout</a>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-box">
+            <div class="stat-num">{{ halls|length }}</div>
+            <div class="stat-lbl">Cinema Halls</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-num">{{ halls|map(attribute='city')|list|unique|list|length }}</div>
+            <div class="stat-lbl">Cities</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-num">21</div>
+            <div class="stat-lbl">Active Screens</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-num">8</div>
+            <div class="stat-lbl">Movies Running</div>
+        </div>
+    </div>
+
+    <div style="margin-bottom:24px;">
+        <div class="eyebrow" style="margin-bottom:8px;">&#9670; All Cinema Halls</div>
+        <h2 style="font-family:'Cormorant Garamond',serif; font-size:32px; font-weight:300; color:var(--white);">Select a Hall to Manage</h2>
+    </div>
+
+    <div class="hall-grid">
+        {% for hall in halls %}
+        <a href="{{ url_for('management_hall', hall_id=hall['id']) }}" class="hall-card">
+            <div class="hall-city">{{ hall['city'] }}</div>
+            <div class="hall-name">{{ hall['name'] }}</div>
+            <div class="hall-addr">{{ hall['address'] }}</div>
+            <div class="hall-manage">Manage Screens →</div>
+        </a>
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}

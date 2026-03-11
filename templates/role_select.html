@@ -1,0 +1,59 @@
+<!--
+  CineVerse — Role Selection Page
+  File: templates/role_select.html
+  Description: After login, user picks their role.
+               Customer | Management | Hospitality Staff
+-->
+{% extends "base.html" %}
+{% block title %}Select Role — CineVerse{% endblock %}
+{% block extra_css %}
+<style>
+.role-page { min-height: calc(100vh - 65px); display: flex; align-items: center; justify-content: center; }
+.role-wrap { text-align: center; max-width: 860px; width: 100%; padding: 40px 24px; }
+.greeting { font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 3px; color: var(--gold); margin-bottom: 12px; }
+.role-title { font-family: 'Cormorant Garamond', serif; font-size: 52px; font-weight: 300; color: var(--white); margin-bottom: 14px; }
+.role-sub { color: var(--muted); font-size: 14px; margin-bottom: 64px; }
+.role-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.role-card { background: var(--card); border: 1px solid var(--border); border-radius: 2px; padding: 40px 24px; text-decoration: none; color: inherit; transition: all 0.35s; position: relative; overflow: hidden; animation: fadeUp 0.6s ease both; }
+.role-card:nth-child(1) { animation-delay: 0.1s; } .role-card:nth-child(2) { animation-delay: 0.2s; } .role-card:nth-child(3) { animation-delay: 0.3s; }
+.role-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, var(--gold-dim) 0%, transparent 60%); opacity: 0; transition: opacity 0.35s; }
+.role-card:hover { border-color: var(--gold); transform: translateY(-4px); }
+.role-card:hover::before { opacity: 1; }
+.role-icon { font-size: 40px; margin-bottom: 24px; display: block; }
+.role-name { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 400; color: var(--white); margin-bottom: 10px; }
+.role-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.role-arrow { display: inline-block; margin-top: 24px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); opacity: 0; transition: opacity 0.25s, transform 0.25s; transform: translateX(-8px); }
+.role-card:hover .role-arrow { opacity: 1; transform: translateX(0); }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 768px) { .role-cards { grid-template-columns: 1fr; } .role-title { font-size: 36px; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="role-page">
+    <div class="role-wrap">
+        <div class="greeting">&#9670; Welcome back, {{ name }} &#9670;</div>
+        <h1 class="role-title">Who Are You?</h1>
+        <p class="role-sub">Select your role to access your personalized dashboard.</p>
+        <div class="role-cards">
+            <a href="{{ url_for('customer') }}" class="role-card">
+                <span class="role-icon">🎬</span>
+                <div class="role-name">Customer</div>
+                <div class="role-desc">Browse movies, book seats, and pre-order snacks for the ultimate cinema experience.</div>
+                <div class="role-arrow">Enter →</div>
+            </a>
+            <a href="{{ url_for('management') }}" class="role-card">
+                <span class="role-icon">🏛️</span>
+                <div class="role-name">Management</div>
+                <div class="role-desc">Oversee cinema halls, manage screens, update movies, and monitor all bookings.</div>
+                <div class="role-arrow">Enter →</div>
+            </a>
+            <a href="{{ url_for('hospitality') }}" class="role-card">
+                <span class="role-icon">🍿</span>
+                <div class="role-name">Hospitality Staff</div>
+                <div class="role-desc">View show schedules, intermission timings, and manage snack deliveries to seats.</div>
+                <div class="role-arrow">Enter →</div>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

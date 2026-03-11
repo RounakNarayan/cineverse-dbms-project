@@ -1,0 +1,102 @@
+<!--
+  CineVerse — Management Hall View
+  File: templates/management_hall.html
+  Description: Shows all screens inside a selected cinema hall.
+               Manager can:
+                 - See current movie, show time, seats sold
+                 - Change the movie on any screen
+                 - Click "View Bookings" for per-screen booking list
+-->
+{% extends "base.html" %}
+{% block title %}{{ hall['name'] }} — Management{% endblock %}
+{% block extra_css %}
+<style>
+.back-link { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); text-decoration: none; font-size: 12px; letter-spacing: 1px; margin-bottom: 32px; transition: color 0.2s; }
+.back-link:hover { color: var(--gold); }
+.hall-banner { background: linear-gradient(135deg, #1a1100, #0d0900); border: 1px solid var(--border); border-radius: 2px; padding: 32px; margin-bottom: 36px; }
+.hall-banner-city { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--gold); margin-bottom: 10px; }
+.hall-banner-name { font-family: 'Cormorant Garamond', serif; font-size: 40px; font-weight: 300; color: var(--white); margin-bottom: 6px; }
+.hall-banner-addr { font-size: 13px; color: var(--muted); }
+.screen-list { display: grid; gap: 20px; }
+.screen-row { background: var(--card); border: 1px solid var(--border); border-radius: 2px; overflow: hidden; transition: border-color 0.2s; }
+.screen-row:hover { border-color: rgba(201,168,76,0.3); }
+.screen-top { display: flex; align-items: center; gap: 24px; padding: 24px 28px; }
+.screen-indicator { width: 48px; height: 48px; border-radius: 2px; background: var(--gold-dim); border: 1px solid rgba(201,168,76,0.2); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.screen-info { flex: 1; }
+.screen-name { font-size: 16px; font-weight: 600; color: var(--white); margin-bottom: 4px; }
+.screen-movie { font-family: 'Cormorant Garamond', serif; font-size: 22px; color: var(--gold); }
+.screen-stats { display: flex; gap: 24px; margin-top: 8px; }
+.screen-stat { font-size: 11px; color: var(--muted); }
+.screen-stat strong { color: var(--white); }
+.screen-actions { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
+.screen-bottom { padding: 20px 28px; border-top: 1px solid var(--border); background: rgba(0,0,0,0.2); display: flex; align-items: center; gap: 16px; }
+.change-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); flex-shrink: 0; }
+.change-form { display: flex; gap: 10px; align-items: center; flex: 1; }
+.change-form select { flex: 1; background: var(--deep); border: 1px solid var(--border); color: var(--text); padding: 10px 16px; font-family: 'Syne', sans-serif; font-size: 13px; border-radius: 1px; outline: none; }
+.change-form select:focus { border-color: var(--gold); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <a href="{{ url_for('management_dashboard') }}" class="back-link">← Back to All Halls</a>
+
+    <div class="hall-banner">
+        <div class="hall-banner-city">{{ hall['city'] }}</div>
+        <div class="hall-banner-name">{{ hall['name'] }}</div>
+        <div class="hall-banner-addr">{{ hall['address'] }}</div>
+    </div>
+
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:28px;">
+        <div>
+            <div class="eyebrow" style="margin-bottom:6px;">&#9670; Hall Screens</div>
+            <h2 style="font-family:'Cormorant Garamond',serif; font-size:32px; font-weight:300; color:var(--white);">
+                {{ screens|length }} Active Screen{% if screens|length != 1 %}s{% endif %}
+            </h2>
+        </div>
+    </div>
+
+    <div class="screen-list">
+        {% for screen in screens %}
+        <div class="screen-row">
+            <div class="screen-top">
+                <div class="screen-indicator">🎞</div>
+                <div class="screen-info">
+                    <div class="screen-name">{{ screen['name'] }}</div>
+                    <div class="screen-movie">{{ screen['movie'] or 'No Movie Assigned' }}</div>
+                    <div class="screen-stats">
+                        <div class="screen-stat">Show: <strong>{{ screen['show_time'] }}</strong></div>
+                        <div class="screen-stat">Capacity: <strong>{{ screen['total_seats'] }}</strong></div>
+                        <div class="screen-stat">Sold: <strong>{{ screen['seats_sold'] }}</strong></div>
+                        <div class="screen-stat">Bookings: <strong>{{ screen['bookings_count'] }}</strong></div>
+                        {% if screen['genre'] %}
+                        <div class="screen-stat">Genre: <strong>{{ screen['genre'] }}</strong></div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="screen-actions">
+                    <a href="{{ url_for('screen_bookings', screen_id=screen['id']) }}" class="btn btn-outline btn-sm">
+                        View Bookings
+                    </a>
+                </div>
+            </div>
+            <div class="screen-bottom">
+                <span class="change-label">Change Movie →</span>
+                <form method="POST" action="{{ url_for('change_movie', screen_id=screen['id']) }}" class="change-form">
+                    <select name="movie_id" required>
+                        <option value="">— Select new movie —</option>
+                        {% for movie in movies %}
+                        <option value="{{ movie['id'] }}" {% if movie['id'] == screen['movie_id'] %}selected{% endif %}>
+                            {{ movie['title'] }} ({{ movie['duration_mins'] }} min)
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-gold btn-sm">Update</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}

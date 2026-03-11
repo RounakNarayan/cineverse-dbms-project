@@ -1,0 +1,187 @@
+<!--
+  CineVerse — Hospitality Staff Dashboard
+  File: templates/hospitality.html
+  Description: Dashboard for hospitality/food staff.
+               Shows:
+                 - Live clock (updates every second via JS)
+                 - Today's show schedule for all screens
+                 - Auto-calculated intermission times
+                 - Snack delivery queue (who ordered what, which screen)
+-->
+{% extends "base.html" %}
+{% block title %}Hospitality Dashboard — CineVerse{% endblock %}
+{% block extra_css %}
+<style>
+.hosp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-bottom: 40px; }
+.clock-card { background: linear-gradient(135deg, #1a1100, #0d0900); border: 1px solid var(--border); border-radius: 2px; padding: 32px; text-align: center; }
+.live-clock { font-family: 'Cormorant Garamond', serif; font-size: 64px; color: var(--gold); font-weight: 300; letter-spacing: 4px; }
+.live-date { font-size: 13px; color: var(--muted); margin-top: 8px; letter-spacing: 2px; }
+.stat-mini { display: inline-flex; gap: 4px; align-items: center; padding: 4px 10px; background: var(--gold-dim); border: 1px solid rgba(201,168,76,0.2); border-radius: 1px; font-size: 11px; color: var(--gold); font-family: 'JetBrains Mono', monospace; margin-top: 6px; }
+.screen-schedule { background: var(--card); border: 1px solid var(--border); border-radius: 2px; overflow: hidden; margin-bottom: 40px; }
+.schedule-header { padding: 20px 24px; border-bottom: 1px solid var(--border); background: rgba(201,168,76,0.03); }
+.schedule-title { font-family: 'Cormorant Garamond', serif; font-size: 22px; color: var(--white); }
+.schedule-row { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr 1fr; padding: 14px 24px; border-bottom: 1px solid var(--border); align-items: center; transition: background 0.2s; }
+.schedule-row:last-child { border-bottom: none; }
+.schedule-row:hover { background: rgba(201,168,76,0.02); }
+.schedule-head { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.sch-screen { font-size: 13px; color: var(--white); font-weight: 500; }
+.sch-movie { font-family: 'Cormorant Garamond', serif; font-size: 16px; color: var(--gold); }
+.sch-hall { font-size: 11px; color: var(--muted); }
+.sch-time { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--white); }
+.sch-intermission { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--gold-light); }
+.delivery-grid { display: grid; gap: 16px; }
+.delivery-card { background: var(--card); border: 1px solid var(--border); border-radius: 2px; padding: 20px 24px; display: flex; gap: 20px; align-items: center; transition: border-color 0.2s; }
+.delivery-card:hover { border-color: rgba(201,168,76,0.3); }
+.delivery-icon { width: 48px; height: 48px; border-radius: 2px; background: var(--gold-dim); border: 1px solid rgba(201,168,76,0.2); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+.delivery-info { flex: 1; }
+.delivery-snack { font-size: 15px; color: var(--white); font-weight: 600; margin-bottom: 4px; }
+.delivery-meta { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.delivery-right { text-align: right; }
+.delivery-screen { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--gold); letter-spacing: 1px; }
+.delivery-qty { font-family: 'Cormorant Garamond', serif; font-size: 28px; color: var(--white); }
+@media (max-width: 900px) { .hosp-grid { grid-template-columns: 1fr; } .schedule-row { grid-template-columns: 1fr 1fr; gap: 8px; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+
+    <div class="page-header">
+        <div class="eyebrow">&#9670; Hospitality Staff Portal</div>
+        <h1>Show Schedule & <em style="font-style:italic;">Deliveries</em></h1>
+        <p style="color:var(--muted); font-size:13px; margin-top:8px;">Date: {{ now.strftime('%A, %d %B %Y') }}</p>
+    </div>
+
+    <div class="hosp-grid">
+
+        <!-- Live Clock -->
+        <div class="clock-card">
+            <div style="font-size:10px; letter-spacing:3px; color:var(--gold); margin-bottom:16px; font-family:'JetBrains Mono',monospace;">CURRENT TIME</div>
+            <div class="live-clock" id="liveClock">{{ now.strftime('%H:%M:%S') }}</div>
+            <div class="live-date">{{ now.strftime('%A, %d %B %Y') }}</div>
+            <div style="margin-top:20px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+                <div class="stat-mini">🎬 {{ screens|length }} Active Screens</div>
+                <div class="stat-mini">🍿 {{ deliveries|length }} Deliveries</div>
+            </div>
+        </div>
+
+        <!-- Delivery Summary Card -->
+        <div class="card">
+            <div style="font-size:10px; letter-spacing:3px; color:var(--gold); margin-bottom:20px; font-family:'JetBrains Mono',monospace;">DELIVERY SUMMARY</div>
+            {% if deliveries %}
+            <div style="font-family:'Cormorant Garamond',serif; font-size:52px; color:var(--gold); line-height:1;">{{ deliveries|length }}</div>
+            <div style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:24px;">Total Orders to Deliver</div>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                {% set seen = [] %}
+                {% for d in deliveries %}
+                {% if d['screen'] not in seen %}
+                {% set _ = seen.append(d['screen']) %}
+                <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px;">
+                    <span style="color:var(--muted);">{{ d['hall'] }} — {{ d['screen'] }}</span>
+                    <span style="color:var(--white);">{{ deliveries|selectattr('screen','equalto',d['screen'])|list|length }} order(s)</span>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="color:var(--muted); font-size:14px; padding:20px 0;">No snack deliveries for today.</div>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <!-- Today's Show Schedule -->
+    <div class="screen-schedule">
+        <div class="schedule-header">
+            <div style="font-size:10px; letter-spacing:3px; color:var(--gold); margin-bottom:8px; font-family:'JetBrains Mono',monospace;">TODAY'S SCHEDULE</div>
+            <div class="schedule-title">All Screens & Intermission Times</div>
+        </div>
+        <div class="schedule-row">
+            <span class="schedule-head">Screen / Hall</span>
+            <span class="schedule-head">Movie</span>
+            <span class="schedule-head">Show Time</span>
+            <span class="schedule-head">Intermission</span>
+            <span class="schedule-head" style="text-align:right;">Audience</span>
+        </div>
+        {% if screens %}
+        {% for s in screens %}
+        {% set show_hour = s['show_time'].split(':')[0]|int %}
+        {% set show_min  = s['show_time'].split(':')[1].split(' ')[0]|int %}
+        {% set half_dur  = (s['duration_mins'] // 2) if s['duration_mins'] else 90 %}
+        {% set raw_min   = show_min + half_dur %}
+        {% set inter_hour = show_hour + (raw_min // 60) %}
+        {% set inter_min  = raw_min % 60 %}
+        <div class="schedule-row">
+            <div>
+                <div class="sch-screen">{{ s['screen_name'] }}</div>
+                <div class="sch-hall">{{ s['hall'] }}, {{ s['city'] }}</div>
+            </div>
+            <div>
+                <div class="sch-movie">{{ s['movie'] }}</div>
+                <div style="font-size:11px; color:var(--muted);">{{ s['duration_mins'] or '—' }} min</div>
+            </div>
+            <div class="sch-time">{{ s['show_time'] }}</div>
+            <div class="sch-intermission">
+                ~{{ '%02d'|format(inter_hour % 12 or 12) }}:{{ '%02d'|format(inter_min) }} {{ 'PM' if inter_hour >= 12 else 'AM' }}
+            </div>
+            <div style="text-align:right; font-size:13px; color:var(--white);">{{ s['audience'] }} pax</div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div style="padding:40px; text-align:center; color:var(--muted);">No shows scheduled for today.</div>
+        {% endif %}
+    </div>
+
+    <!-- Snack Delivery Queue -->
+    <div>
+        <div style="margin-bottom:24px;">
+            <div class="eyebrow" style="margin-bottom:8px;">&#9670; Snack Delivery Queue</div>
+            <h2 style="font-family:'Cormorant Garamond',serif; font-size:32px; font-weight:300; color:var(--white);">Deliver to Seats During Intermission</h2>
+        </div>
+
+        {% if deliveries %}
+        <div class="delivery-grid">
+            {% for d in deliveries %}
+            <div class="delivery-card">
+                <div class="delivery-icon">🍿</div>
+                <div class="delivery-info">
+                    <div class="delivery-snack">{{ d['snack'] }}</div>
+                    <div class="delivery-meta">
+                        Customer: <strong style="color:var(--white);">{{ d['customer'] }}</strong><br>
+                        Booking #{{ d['booking_id'] }} &nbsp;|&nbsp; {{ d['seats_booked'] }} seat(s) &nbsp;|&nbsp; {{ d['category'] }}
+                    </div>
+                </div>
+                <div class="delivery-right">
+                    <div class="delivery-screen">{{ d['screen'] }}</div>
+                    <div style="font-size:11px; color:var(--muted); margin-bottom:4px;">{{ d['hall'] }}</div>
+                    <div class="delivery-qty">×{{ d['quantity'] }}</div>
+                    <span class="tag tag-gold" style="margin-top:4px;">PENDING</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% else %}
+        <div class="card" style="text-align:center; padding:60px;">
+            <div style="font-size:48px; margin-bottom:16px; opacity:0.3;">🍿</div>
+            <div style="font-family:'Cormorant Garamond',serif; font-size:28px; color:var(--white); margin-bottom:8px;">No Deliveries Today</div>
+            <div style="font-size:13px; color:var(--muted);">No snack orders placed for today's shows.</div>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function updateClock() {
+        const now = new Date();
+        const h   = String(now.getHours()).padStart(2, '0');
+        const m   = String(now.getMinutes()).padStart(2, '0');
+        const s   = String(now.getSeconds()).padStart(2, '0');
+        document.getElementById('liveClock').textContent = `${h}:${m}:${s}`;
+    }
+    setInterval(updateClock, 1000);
+</script>
+{% endblock %}

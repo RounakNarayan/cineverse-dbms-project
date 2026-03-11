@@ -1,0 +1,139 @@
+<!--
+  CineVerse — Payment Page
+  File: templates/payment.html
+  Description: Shows order summary and payment method selection.
+               Methods: Card, UPI, Net Banking, Wallet.
+               On confirm — posts to /customer/pay route.
+-->
+{% extends "base.html" %}
+{% block title %}Payment — CineVerse{% endblock %}
+{% block extra_css %}
+<style>
+.pay-layout { display: grid; grid-template-columns: 1fr 400px; gap: 32px; align-items: start; }
+.order-card { background: var(--card); border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
+.order-header { background: linear-gradient(135deg, #1a1400, #0d0900); padding: 28px 32px; border-bottom: 1px solid var(--border); }
+.order-movie { font-family: 'Cormorant Garamond', serif; font-size: 32px; font-weight: 300; color: var(--white); margin-bottom: 8px; }
+.order-body { padding: 28px 32px; }
+.order-row { display: flex; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.order-row:last-of-type { border-bottom: none; }
+.order-key { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+.order-val { font-size: 14px; color: var(--white); }
+.order-total { padding: 24px 32px; background: var(--gold-dim); border-top: 1px solid rgba(201,168,76,0.2); display: flex; justify-content: space-between; align-items: center; }
+.pay-card { background: var(--card); border: 1px solid var(--border); border-radius: 2px; padding: 32px; position: sticky; top: 90px; }
+.pay-title { font-family: 'Cormorant Garamond', serif; font-size: 28px; color: var(--white); margin-bottom: 28px; }
+.method-grid { display: grid; gap: 10px; margin-bottom: 28px; }
+.method-item { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border: 1px solid var(--border); border-radius: 2px; cursor: pointer; transition: all 0.2s; }
+.method-item:hover { border-color: rgba(201,168,76,0.4); }
+.method-item.selected { border-color: var(--gold); background: var(--gold-dim); }
+.method-item input { display: none; }
+.method-icon { font-size: 22px; }
+.method-name { font-size: 14px; color: var(--white); }
+.pay-total { font-family: 'Cormorant Garamond', serif; font-size: 44px; color: var(--gold); text-align: center; margin: 24px 0; }
+.pay-label { text-align: center; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.secure-note { display: flex; align-items: center; gap: 8px; justify-content: center; font-size: 11px; color: var(--muted); margin-top: 16px; }
+@media (max-width: 900px) { .pay-layout { grid-template-columns: 1fr; } .pay-card { position: static; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <div class="eyebrow">&#9670; Final Step</div>
+        <h1>Complete Your <em style="font-style:italic;">Payment</em></h1>
+    </div>
+
+    <div class="pay-layout">
+
+        <!-- Order Summary -->
+        <div class="order-card">
+            <div class="order-header">
+                <div style="font-size:10px; letter-spacing:3px; color:var(--gold); margin-bottom:10px; font-family:'JetBrains Mono',monospace;">YOUR ORDER</div>
+                <div class="order-movie">{{ booking.movie }}</div>
+                <div style="font-size:12px; color:var(--muted);">{{ booking.hall }} — {{ booking.screen_name }}</div>
+            </div>
+            <div class="order-body">
+                <div class="order-row">
+                    <span class="order-key">Date</span>
+                    <span class="order-val">{{ booking.date }}</span>
+                </div>
+                <div class="order-row">
+                    <span class="order-key">Show Time</span>
+                    <span class="order-val">{{ booking.show_time }}</span>
+                </div>
+                <div class="order-row">
+                    <span class="order-key">Seats</span>
+                    <span class="order-val">{{ booking.seats }} seat{% if booking.seats > 1 %}s{% endif %}</span>
+                </div>
+                <div class="order-row">
+                    <span class="order-key">Ticket Price</span>
+                    <span class="order-val">₹{{ booking.ticket_price }} × {{ booking.seats }} = <strong style="color:var(--gold);">₹{{ booking.ticket_price * booking.seats }}</strong></span>
+                </div>
+                <div class="order-row">
+                    <span class="order-key">Snacks</span>
+                    <span class="order-val">
+                        {% if booking.snack_name != 'None' %}
+                            {{ booking.snack_name }}
+                            {% if booking.snack_price > 0 %} — <strong style="color:var(--gold);">₹{{ booking.snack_price }}</strong>{% endif %}
+                        {% else %}
+                            <span style="color:var(--muted); font-style:italic;">None selected</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="order-total">
+                <span style="font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--muted);">Total Amount</span>
+                <span style="font-family:'Cormorant Garamond',serif; font-size:36px; color:var(--gold);">₹{{ booking.total }}</span>
+            </div>
+        </div>
+
+        <!-- Payment Method -->
+        <div class="pay-card">
+            <div class="pay-title">Choose Payment</div>
+            <form method="POST" action="{{ url_for('pay') }}">
+                <div class="method-grid">
+                    <label class="method-item selected" onclick="selectMethod(this)">
+                        <input type="radio" name="method" value="card" checked>
+                        <span class="method-icon">💳</span>
+                        <span class="method-name">Credit / Debit Card</span>
+                    </label>
+                    <label class="method-item" onclick="selectMethod(this)">
+                        <input type="radio" name="method" value="upi">
+                        <span class="method-icon">📱</span>
+                        <span class="method-name">UPI / QR Code</span>
+                    </label>
+                    <label class="method-item" onclick="selectMethod(this)">
+                        <input type="radio" name="method" value="netbanking">
+                        <span class="method-icon">🏦</span>
+                        <span class="method-name">Net Banking</span>
+                    </label>
+                    <label class="method-item" onclick="selectMethod(this)">
+                        <input type="radio" name="method" value="wallet">
+                        <span class="method-icon">👛</span>
+                        <span class="method-name">Digital Wallet</span>
+                    </label>
+                </div>
+                <div class="pay-label">Amount to Pay</div>
+                <div class="pay-total">₹{{ booking.total }}</div>
+                <button type="submit" class="btn btn-gold" style="width:100%; font-size:13px; padding:16px;">
+                    Confirm & Pay ₹{{ booking.total }}
+                </button>
+                <div class="secure-note">🔒 Secured by 256-bit SSL encryption</div>
+            </form>
+            <div style="margin-top:24px; text-align:center;">
+                <a href="{{ url_for('customer') }}" style="font-size:12px; color:var(--muted);">← Edit booking</a>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function selectMethod(el) {
+    document.querySelectorAll('.method-item').forEach(m => m.classList.remove('selected'));
+    el.classList.add('selected');
+    el.querySelector('input').checked = true;
+}
+</script>
+{% endblock %}

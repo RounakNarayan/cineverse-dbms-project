@@ -1,0 +1,290 @@
+<!--
+  CineVerse — Customer Booking Page
+  File: templates/customer.html
+  Description: 4-step booking form.
+               Step 1: Date & City
+               Step 2: Hall & Screen (loaded via AJAX)
+               Step 3: Number of seats
+               Step 4: Pre-book snacks
+               Live booking summary shown in sidebar.
+-->
+{% extends "base.html" %}
+{% block title %}Book Tickets — CineVerse{% endblock %}
+{% block extra_css %}
+<style>
+.booking-layout { display: grid; grid-template-columns: 1fr 380px; gap: 32px; align-items: start; }
+.step-row { display: flex; gap: 12px; align-items: center; margin-bottom: 28px; }
+.step-num { width: 32px; height: 32px; border-radius: 50%; background: var(--gold-dim); border: 1px solid rgba(201,168,76,0.3); display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--gold); font-family: 'JetBrains Mono', monospace; flex-shrink: 0; }
+.screen-cards { display: grid; gap: 12px; }
+.screen-card { border: 1px solid var(--border); border-radius: 2px; padding: 18px 20px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 16px; }
+.screen-card:hover { border-color: rgba(201,168,76,0.4); background: rgba(201,168,76,0.03); }
+.screen-card.selected { border-color: var(--gold); background: var(--gold-dim); }
+.screen-card input[type=radio] { display: none; }
+.screen-dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; }
+.screen-card.selected .screen-dot { background: var(--gold); border-color: var(--gold); }
+.screen-info { flex: 1; }
+.screen-name { font-size: 14px; font-weight: 600; color: var(--white); margin-bottom: 4px; }
+.screen-meta { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.screen-price { font-family: 'Cormorant Garamond', serif; font-size: 20px; color: var(--gold); }
+.side-card { background: var(--card); border: 1px solid var(--border); border-radius: 2px; padding: 28px; position: sticky; top: 90px; }
+.side-title { font-family: 'Cormorant Garamond', serif; font-size: 22px; color: var(--white); margin-bottom: 20px; }
+.side-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.side-row:last-of-type { border-bottom: none; }
+.side-key { color: var(--muted); }
+.side-val { color: var(--white); font-weight: 500; }
+.total-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+.total-amount { font-family: 'Cormorant Garamond', serif; font-size: 32px; color: var(--gold); }
+.snack-grid { display: grid; gap: 8px; }
+.snack-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 2px; cursor: pointer; transition: all 0.2s; }
+.snack-item:hover { border-color: rgba(201,168,76,0.3); }
+.snack-item.selected { border-color: var(--gold); background: var(--gold-dim); }
+.snack-item input[type=radio] { display: none; }
+.snack-dot { width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; }
+.snack-item.selected .snack-dot { background: var(--gold); border-color: var(--gold); }
+.snack-name { flex: 1; font-size: 13px; color: var(--text); }
+.snack-price { font-size: 12px; color: var(--gold); font-family: 'JetBrains Mono', monospace; }
+.avail-good { color: #70c070; }
+.avail-low { color: #e0a070; }
+@media (max-width: 900px) { .booking-layout { grid-template-columns: 1fr; } .side-card { position: static; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <div class="eyebrow">&#9670; Customer Portal</div>
+        <h1>Book Your <em style="font-style:italic;">Experience</em></h1>
+    </div>
+
+    <form method="POST" action="{{ url_for('book') }}" id="bookForm">
+    <div class="booking-layout">
+        <div>
+
+            <!-- STEP 1: Date & City -->
+            <div class="card" style="margin-bottom:24px;">
+                <div class="step-row">
+                    <div class="step-num">1</div>
+                    <div>
+                        <div style="font-size:10px; letter-spacing:3px; color:var(--gold); font-family:'JetBrains Mono',monospace;">STEP ONE</div>
+                        <div style="font-size:16px; font-weight:600; color:var(--white);">Date & Location</div>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group" style="margin:0;">
+                        <label>Select Date</label>
+                        <input type="date" name="date" id="dateInput" required>
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Select City</label>
+                        <select name="city" id="citySelect" required onchange="loadHalls()">
+                            <option value="">— Choose a city —</option>
+                            {% for city in cities %}
+                            <option value="{{ city['city'] }}">{{ city['city'] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 2: Hall & Screen -->
+            <div class="card" style="margin-bottom:24px;">
+                <div class="step-row">
+                    <div class="step-num">2</div>
+                    <div>
+                        <div style="font-size:10px; letter-spacing:3px; color:var(--gold); font-family:'JetBrains Mono',monospace;">STEP TWO</div>
+                        <div style="font-size:16px; font-weight:600; color:var(--white);">Cinema Hall & Screen</div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Select Cinema Hall</label>
+                    <select name="hall_id" id="hallSelect" required onchange="loadScreens()" disabled>
+                        <option value="">— Select city first —</option>
+                    </select>
+                </div>
+                <input type="hidden" name="screen_id" id="screenIdInput" required>
+                <div id="screensContainer" style="display:none;">
+                    <label style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); display:block; margin-bottom:12px;">Available Screens</label>
+                    <div class="screen-cards" id="screenCards"></div>
+                </div>
+                <div id="screensPlaceholder" style="color:var(--muted); font-size:13px; padding:16px 0;">Select a hall to see available screens.</div>
+            </div>
+
+            <!-- STEP 3: Seats -->
+            <div class="card" style="margin-bottom:24px;">
+                <div class="step-row">
+                    <div class="step-num">3</div>
+                    <div>
+                        <div style="font-size:10px; letter-spacing:3px; color:var(--gold); font-family:'JetBrains Mono',monospace;">STEP THREE</div>
+                        <div style="font-size:16px; font-weight:600; color:var(--white);">Number of Seats</div>
+                    </div>
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label>Seats Required</label>
+                    <select name="seats" id="seatsSelect" required onchange="updateTotal()">
+                        <option value="">— Select seats —</option>
+                        {% for i in range(1, 11) %}
+                        <option value="{{ i }}">{{ i }} seat{% if i > 1 %}s{% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- STEP 4: Snacks -->
+            <div class="card" style="margin-bottom:24px;">
+                <div class="step-row">
+                    <div class="step-num">4</div>
+                    <div>
+                        <div style="font-size:10px; letter-spacing:3px; color:var(--gold); font-family:'JetBrains Mono',monospace;">STEP FOUR</div>
+                        <div style="font-size:16px; font-weight:600; color:var(--white);">Pre-Book Snacks <span style="font-size:11px; color:var(--muted); font-weight:400;">(Optional)</span></div>
+                    </div>
+                </div>
+                <p style="font-size:12px; color:var(--muted); margin-bottom:20px;">Snacks will be delivered to your seats during intermission.</p>
+                <div class="snack-grid">
+                    <div class="snack-item selected" onclick="selectSnack(this, '')">
+                        <input type="radio" name="snack_id" value="" checked>
+                        <div class="snack-dot"></div>
+                        <div class="snack-name" style="color:var(--muted); font-style:italic;">No snacks — I'll decide at the counter</div>
+                        <div class="snack-price">—</div>
+                    </div>
+                    {% for snack in snacks %}
+                    <div class="snack-item" onclick="selectSnack(this, '{{ snack['id'] }}')">
+                        <input type="radio" name="snack_id" value="{{ snack['id'] }}">
+                        <div class="snack-dot"></div>
+                        <div class="snack-name">{{ snack['name'] }} <span style="font-size:10px; color:var(--muted);">({{ snack['category'] }})</span></div>
+                        <div class="snack-price">₹{{ snack['price'] }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Live Booking Summary Sidebar -->
+        <div class="side-card">
+            <div class="side-title">Booking Summary</div>
+            <div class="side-row"><span class="side-key">Date</span><span class="side-val" id="sumDate">—</span></div>
+            <div class="side-row"><span class="side-key">City</span><span class="side-val" id="sumCity">—</span></div>
+            <div class="side-row"><span class="side-key">Hall</span><span class="side-val" id="sumHall">—</span></div>
+            <div class="side-row"><span class="side-key">Screen</span><span class="side-val" id="sumScreen">—</span></div>
+            <div class="side-row"><span class="side-key">Movie</span><span class="side-val" id="sumMovie">—</span></div>
+            <div class="side-row"><span class="side-key">Show Time</span><span class="side-val" id="sumTime">—</span></div>
+            <div class="side-row"><span class="side-key">Seats</span><span class="side-val" id="sumSeats">—</span></div>
+            <div class="side-row"><span class="side-key">Snacks</span><span class="side-val" id="sumSnack">None</span></div>
+            <div class="side-row"><span class="side-key">Ticket Total</span><span class="side-val" id="sumTickets">₹0</span></div>
+            <div class="side-row"><span class="side-key">Snack Total</span><span class="side-val" id="sumSnackTotal">₹0</span></div>
+            <hr class="divider" style="margin:16px 0;">
+            <div style="display:flex; flex-direction:column; gap:4px; padding-top:8px;">
+                <span class="total-label">Total Amount</span>
+                <span class="total-amount" id="sumTotal">₹0</span>
+            </div>
+            <button type="submit" class="btn btn-gold" style="width:100%; margin-top:28px;" id="proceedBtn" disabled>
+                Proceed to Payment
+            </button>
+        </div>
+
+    </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('dateInput').min   = today;
+    document.getElementById('dateInput').value = today;
+    document.getElementById('sumDate').textContent = today;
+
+    let selectedTicketPrice = 0;
+    let selectedSnackPrice  = 0;
+
+    document.getElementById('dateInput').addEventListener('change', function() {
+        document.getElementById('sumDate').textContent = this.value || '—';
+    });
+
+    async function loadHalls() {
+        const city    = document.getElementById('citySelect').value;
+        const hallSel = document.getElementById('hallSelect');
+        document.getElementById('sumCity').textContent = city || '—';
+        hallSel.disabled = !city;
+        hallSel.innerHTML = '<option value="">— Loading... —</option>';
+        if (!city) return;
+        const res   = await fetch(`/api/halls?city=${encodeURIComponent(city)}`);
+        const halls = await res.json();
+        hallSel.innerHTML = '<option value="">— Choose a hall —</option>';
+        halls.forEach(h => hallSel.innerHTML += `<option value="${h.id}">${h.name}</option>`);
+        document.getElementById('screensContainer').style.display  = 'none';
+        document.getElementById('screensPlaceholder').style.display = 'block';
+        document.getElementById('screenIdInput').value = '';
+        checkProceed();
+    }
+
+    async function loadScreens() {
+        const hallId   = document.getElementById('hallSelect').value;
+        const hallText = document.getElementById('hallSelect').selectedOptions[0]?.text || '—';
+        document.getElementById('sumHall').textContent = hallText;
+        if (!hallId) return;
+        const res     = await fetch(`/api/screens?hall_id=${hallId}`);
+        const screens = await res.json();
+        const container = document.getElementById('screenCards');
+        container.innerHTML = '';
+        screens.forEach(s => {
+            const availClass = s.available_seats > 20 ? 'avail-good' : 'avail-low';
+            container.innerHTML += `
+            <label class="screen-card" onclick="selectScreen(this,'${s.id}','${s.name}','${s.movie}','${s.show_time}',${s.ticket_price})">
+                <input type="radio" name="_screen" value="${s.id}">
+                <div class="screen-dot"></div>
+                <div class="screen-info">
+                    <div class="screen-name">${s.name}</div>
+                    <div class="screen-meta">${s.movie} &nbsp;|&nbsp; ${s.show_time} &nbsp;|&nbsp; <span class="${availClass}">${s.available_seats} seats left</span></div>
+                </div>
+                <div class="screen-price">₹${s.ticket_price}</div>
+            </label>`;
+        });
+        document.getElementById('screensContainer').style.display  = 'block';
+        document.getElementById('screensPlaceholder').style.display = 'none';
+    }
+
+    function selectScreen(el, id, name, movie, time, price) {
+        document.querySelectorAll('.screen-card').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        document.getElementById('screenIdInput').value       = id;
+        document.getElementById('sumScreen').textContent     = name;
+        document.getElementById('sumMovie').textContent      = movie;
+        document.getElementById('sumTime').textContent       = time;
+        selectedTicketPrice = price;
+        updateTotal();
+        checkProceed();
+    }
+
+    function selectSnack(el, id) {
+        document.querySelectorAll('.snack-item').forEach(s => s.classList.remove('selected'));
+        el.classList.add('selected');
+        el.querySelector('input[type=radio]').checked = true;
+        const priceText = el.querySelector('.snack-price').textContent;
+        selectedSnackPrice = priceText === '—' ? 0 : parseFloat(priceText.replace('₹', ''));
+        const snackName = el.querySelector('.snack-name').textContent.trim().split('(')[0].trim();
+        document.getElementById('sumSnack').textContent = id ? snackName : 'None';
+        updateTotal();
+    }
+
+    function updateTotal() {
+        const seats       = parseInt(document.getElementById('seatsSelect').value) || 0;
+        const ticketTotal = seats * selectedTicketPrice;
+        const snackTotal  = seats * selectedSnackPrice;
+        document.getElementById('sumSeats').textContent      = seats ? `${seats} seat${seats > 1 ? 's' : ''}` : '—';
+        document.getElementById('sumTickets').textContent    = `₹${ticketTotal}`;
+        document.getElementById('sumSnackTotal').textContent = `₹${snackTotal}`;
+        document.getElementById('sumTotal').textContent      = `₹${ticketTotal + snackTotal}`;
+        checkProceed();
+    }
+
+    function checkProceed() {
+        const ready = document.getElementById('screenIdInput').value &&
+                      document.getElementById('seatsSelect').value &&
+                      document.getElementById('dateInput').value;
+        document.getElementById('proceedBtn').disabled = !ready;
+    }
+
+    document.getElementById('seatsSelect').addEventListener('change', () => { updateTotal(); checkProceed(); });
+</script>
+{% endblock %}

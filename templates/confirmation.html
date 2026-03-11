@@ -1,0 +1,111 @@
+<!--
+  CineVerse — Booking Confirmation Page
+  File: templates/confirmation.html
+  Description: Shown after successful payment.
+               Displays a styled cinema ticket with all
+               booking details: movie, hall, screen, seats, snacks, amount paid.
+-->
+{% extends "base.html" %}
+{% block title %}Booking Confirmed — CineVerse{% endblock %}
+{% block extra_css %}
+<style>
+.confirm-page { min-height: calc(100vh - 65px); display: flex; align-items: center; justify-content: center; padding: 60px 24px; }
+.confirm-wrap { max-width: 620px; width: 100%; }
+.success-badge { text-align: center; margin-bottom: 40px; animation: popIn 0.6s cubic-bezier(0.34,1.56,0.64,1) both; }
+.success-circle { width: 80px; height: 80px; border-radius: 50%; background: rgba(39,174,96,0.1); border: 2px solid rgba(39,174,96,0.3); display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 20px; }
+.success-title { font-family: 'Cormorant Garamond', serif; font-size: 42px; font-weight: 300; color: var(--white); margin-bottom: 8px; }
+.success-sub { font-size: 13px; color: var(--muted); }
+.ticket { background: var(--card); border: 1px solid var(--border); border-radius: 2px; overflow: hidden; animation: fadeUp 0.6s 0.2s ease both; position: relative; }
+.ticket::before, .ticket::after { content: ''; position: absolute; width: 32px; height: 32px; border-radius: 50%; background: var(--black); top: 50%; transform: translateY(-50%); z-index: 2; }
+.ticket::before { left: -16px; }
+.ticket::after  { right: -16px; }
+.ticket-header { background: linear-gradient(135deg, #1a1100, #0d0800); padding: 28px 36px; text-align: center; border-bottom: 1px dashed var(--border); }
+.ticket-id { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--gold); margin-bottom: 12px; }
+.ticket-movie { font-family: 'Cormorant Garamond', serif; font-size: 36px; font-weight: 300; color: var(--white); }
+.ticket-body { padding: 28px 36px; }
+.ticket-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+.ticket-field { padding: 16px 0; border-bottom: 1px solid var(--border); }
+.ticket-field:last-child, .ticket-field:nth-last-child(2) { border-bottom: none; }
+.t-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; font-family: 'JetBrains Mono', monospace; }
+.t-value { font-size: 14px; color: var(--white); font-weight: 500; }
+.ticket-footer { padding: 20px 36px; background: var(--gold-dim); border-top: 1px dashed rgba(201,168,76,0.3); display: flex; justify-content: space-between; align-items: center; }
+.paid-amount { font-family: 'Cormorant Garamond', serif; font-size: 36px; color: var(--gold); }
+.action-row { display: flex; gap: 16px; margin-top: 28px; animation: fadeUp 0.6s 0.4s ease both; }
+@keyframes popIn  { from { opacity: 0; transform: scale(0.6); }   to { opacity: 1; transform: scale(1); } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="confirm-page">
+    <div class="confirm-wrap">
+
+        <!-- Success Badge -->
+        <div class="success-badge">
+            <div class="success-circle">✓</div>
+            <div class="success-title">Booking Confirmed!</div>
+            <div class="success-sub">Your tickets are ready. See you at the movies, {{ name }}!</div>
+        </div>
+
+        <!-- Cinema Ticket -->
+        <div class="ticket">
+            <div class="ticket-header">
+                <div class="ticket-id">BOOKING #{{ booking.booking_id }}</div>
+                <div class="ticket-movie">{{ booking.movie }}</div>
+            </div>
+            <div class="ticket-body">
+                <div class="ticket-grid">
+                    <div class="ticket-field">
+                        <div class="t-label">Customer</div>
+                        <div class="t-value">{{ name }}</div>
+                    </div>
+                    <div class="ticket-field">
+                        <div class="t-label">Date</div>
+                        <div class="t-value">{{ booking.date }}</div>
+                    </div>
+                    <div class="ticket-field">
+                        <div class="t-label">Cinema Hall</div>
+                        <div class="t-value">{{ booking.hall }}</div>
+                    </div>
+                    <div class="ticket-field">
+                        <div class="t-label">Screen</div>
+                        <div class="t-value">{{ booking.screen_name }}</div>
+                    </div>
+                    <div class="ticket-field">
+                        <div class="t-label">Show Time</div>
+                        <div class="t-value">{{ booking.show_time }}</div>
+                    </div>
+                    <div class="ticket-field">
+                        <div class="t-label">Seats Booked</div>
+                        <div class="t-value">{{ booking.seats }} Seat{% if booking.seats > 1 %}s{% endif %}</div>
+                    </div>
+                    <div class="ticket-field" style="grid-column: 1 / -1;">
+                        <div class="t-label">Snacks Pre-Ordered</div>
+                        <div class="t-value">
+                            {% if booking.snack_name != 'None' %}
+                                🍿 {{ booking.snack_name }} × {{ booking.seats }}
+                            {% else %}
+                                <span style="color:var(--muted); font-style:italic;">None selected</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ticket-footer">
+                <div>
+                    <div style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--muted);">Total Paid</div>
+                    <div class="paid-amount">₹{{ booking.total }}</div>
+                </div>
+                <span class="tag tag-green">✓ CONFIRMED</span>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-row">
+            <a href="{{ url_for('customer') }}" class="btn btn-gold">Book Another</a>
+            <a href="{{ url_for('role_select') }}" class="btn btn-outline">Go to Dashboard</a>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

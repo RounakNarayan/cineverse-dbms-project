@@ -1,0 +1,96 @@
+<!--
+  CineVerse — Base Template
+  File: templates/base.html
+  Description: Shared layout used by all pages.
+               Contains navbar, global CSS variables,
+               and block placeholders for child templates.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CineVerse{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --black: #080808;
+            --deep: #0d0d0d;
+            --card: #111111;
+            --border: #1f1f1f;
+            --gold: #c9a84c;
+            --gold-light: #e8c97a;
+            --gold-dim: rgba(201,168,76,0.15);
+            --red: #c0392b;
+            --text: #e8e0d0;
+            --muted: #6b6358;
+            --white: #f5f0e8;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--black);
+            color: var(--text);
+            font-family: 'Syne', sans-serif;
+            min-height: 100vh;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(201,168,76,0.05) 0%, transparent 100%);
+        }
+        .nav {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 18px 40px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(8,8,8,0.95);
+            position: sticky; top: 0; z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        .nav-logo { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 500; letter-spacing: 4px; color: var(--gold); text-decoration: none; }
+        .nav-logo span { color: var(--white); }
+        .nav-links { display: flex; gap: 24px; align-items: center; }
+        .nav-links a { color: var(--muted); text-decoration: none; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; transition: color 0.2s; }
+        .nav-links a:hover { color: var(--gold); }
+        .nav-user { font-size: 12px; color: var(--muted); letter-spacing: 1px; }
+        .nav-user strong { color: var(--gold); }
+        .container { max-width: 1100px; margin: 0 auto; padding: 60px 24px; }
+        .page-header { margin-bottom: 50px; }
+        .page-header .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--gold); text-transform: uppercase; margin-bottom: 12px; }
+        .page-header h1 { font-family: 'Cormorant Garamond', serif; font-size: 52px; font-weight: 300; line-height: 1.1; color: var(--white); }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 2px; padding: 32px; }
+        .form-group { margin-bottom: 24px; }
+        .form-group label { display: block; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+        .form-group input, .form-group select { width: 100%; background: var(--deep); border: 1px solid var(--border); color: var(--text); padding: 14px 18px; font-family: 'Syne', sans-serif; font-size: 14px; border-radius: 1px; outline: none; transition: border-color 0.2s; -webkit-appearance: none; }
+        .form-group input:focus, .form-group select:focus { border-color: var(--gold); }
+        .form-group select option { background: var(--deep); }
+        .btn { display: inline-block; padding: 14px 36px; font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; border: none; cursor: pointer; text-decoration: none; transition: all 0.25s; border-radius: 1px; }
+        .btn-gold { background: var(--gold); color: var(--black); }
+        .btn-gold:hover { background: var(--gold-light); }
+        .btn-outline { background: transparent; color: var(--gold); border: 1px solid var(--gold); }
+        .btn-outline:hover { background: var(--gold-dim); }
+        .btn-sm { padding: 9px 20px; font-size: 11px; letter-spacing: 2px; }
+        .alert { padding: 14px 20px; border-left: 3px solid; margin-bottom: 24px; font-size: 13px; }
+        .alert-error { border-color: var(--red); background: rgba(192,57,43,0.1); color: #e07070; }
+        .alert-success { border-color: #27ae60; background: rgba(39,174,96,0.1); color: #70c070; }
+        .divider { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+        .tag { display: inline-block; padding: 4px 10px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; border-radius: 1px; font-family: 'JetBrains Mono', monospace; }
+        .tag-gold { background: var(--gold-dim); color: var(--gold); border: 1px solid rgba(201,168,76,0.3); }
+        .tag-green { background: rgba(39,174,96,0.1); color: #70c070; border: 1px solid rgba(39,174,96,0.2); }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--gold); text-transform: uppercase; margin-bottom: 12px; }
+        @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } .nav { padding: 16px 20px; } .container { padding: 40px 16px; } .page-header h1 { font-size: 36px; } }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+<nav class="nav">
+    <a href="{{ url_for('index') }}" class="nav-logo">CINE<span>VERSE</span></a>
+    <div class="nav-links">
+        {% if session.get('user_id') %}
+        <span class="nav-user">Welcome, <strong>{{ session.user_name }}</strong></span>
+        <a href="{{ url_for('role_select') }}">Dashboard</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+        {% endif %}
+    </div>
+</nav>
+{% block content %}{% endblock %}
+{% block extra_js %}{% endblock %}
+</body>
+</html>

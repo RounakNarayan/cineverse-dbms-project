@@ -1,0 +1,64 @@
+<!--
+  CineVerse — Hospitality Staff Login Page
+  File: templates/hospitality_login.html
+  Description: Dedicated login page for hospitality staff.
+               Uses same user accounts as customers.
+-->
+{% extends "base.html" %}
+{% block title %}Hospitality Login — CineVerse{% endblock %}
+{% block extra_css %}
+<style>
+.auth-wrap { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
+.auth-visual { background: linear-gradient(160deg, #0d0a00 0%, #1a1200 50%, #0a0800 100%); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px; position: relative; overflow: hidden; border-right: 1px solid var(--border); }
+.auth-visual::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 70% 70% at 50% 50%, rgba(201,168,76,0.08) 0%, transparent 70%); }
+.film-strip { position: absolute; top: 0; bottom: 0; width: 60px; opacity: 0.06; display: flex; flex-direction: column; }
+.film-strip.left { left: 0; } .film-strip.right { right: 0; }
+.film-hole { width: 40px; height: 30px; margin: 4px auto; border: 2px solid var(--gold); border-radius: 4px; flex-shrink: 0; }
+.cinema-title { font-family: 'Cormorant Garamond', serif; font-size: 72px; font-weight: 300; color: var(--gold); line-height: 0.9; letter-spacing: -2px; position: relative; z-index: 1; animation: fadeUp 0.8s ease both; }
+.cinema-sub { font-size: 11px; letter-spacing: 6px; color: var(--muted); text-transform: uppercase; margin-top: 20px; position: relative; z-index: 1; }
+.role-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--gold-dim); border: 1px solid rgba(201,168,76,0.3); border-radius: 1px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); margin-top: 32px; position: relative; z-index: 1; }
+.star-row { display: flex; gap: 8px; margin-top: 32px; position: relative; z-index: 1; }
+.star { width: 4px; height: 4px; background: var(--gold); border-radius: 50%; opacity: 0.6; }
+.auth-form-wrap { display: flex; flex-direction: column; justify-content: center; padding: 60px; background: var(--black); }
+.back-link { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); text-decoration: none; font-size: 12px; letter-spacing: 1px; margin-bottom: 40px; transition: color 0.2s; }
+.back-link:hover { color: var(--gold); }
+.form-title { font-family: 'Cormorant Garamond', serif; font-size: 38px; font-weight: 300; color: var(--white); margin-bottom: 8px; }
+.form-desc { font-size: 13px; color: var(--muted); margin-bottom: 36px; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 768px) { .auth-wrap { grid-template-columns: 1fr; } .auth-visual { display: none; } .auth-form-wrap { padding: 40px 24px; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+    <div class="auth-visual">
+        <div class="film-strip left">{% for i in range(30) %}<div class="film-hole"></div>{% endfor %}</div>
+        <div class="cinema-title">CINE<br>VERSE</div>
+        <div class="cinema-sub">Premium Cinema Experience</div>
+        <div class="role-badge">🍿 Hospitality Staff Portal</div>
+        <div class="star-row">{% for i in range(5) %}<div class="star"></div>{% endfor %}</div>
+        <div class="film-strip right">{% for i in range(30) %}<div class="film-hole"></div>{% endfor %}</div>
+    </div>
+    <div class="auth-form-wrap">
+        <a href="{{ url_for('role_choice') }}" class="back-link">← Back to Role Selection</a>
+        <div class="form-title">Staff Access</div>
+        <div class="form-desc">Enter your credentials to access the hospitality dashboard.</div>
+        {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+        <form method="POST">
+            <div class="form-group">
+                <label>Phone Number</label>
+                <input type="tel" name="phone" placeholder="Enter your phone number" required>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" placeholder="Enter your password" required>
+            </div>
+            <button type="submit" class="btn btn-gold" style="width:100%; margin-top:8px;">Access Dashboard</button>
+        </form>
+        <div style="margin-top:48px; padding-top:24px; border-top:1px solid var(--border);">
+            <div style="font-size:10px; letter-spacing:2px; color:var(--muted); text-transform:uppercase; margin-bottom:8px;">Demo Credentials</div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); line-height:1.8;">Phone: 9876543210<br>Pass: password123</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

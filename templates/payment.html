@@ -1,9 +1,9 @@
 <!--
   CineVerse — Payment Page
   File: templates/payment.html
-  Description: Shows order summary and payment method selection.
+  Description: Shows full order summary including
+               per-person snack breakdown and payment method selection.
                Methods: Card, UPI, Net Banking, Wallet.
-               On confirm — posts to /customer/pay route.
 -->
 {% extends "base.html" %}
 {% block title %}Payment — CineVerse{% endblock %}
@@ -19,6 +19,13 @@
 .order-key { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
 .order-val { font-size: 14px; color: var(--white); }
 .order-total { padding: 24px 32px; background: var(--gold-dim); border-top: 1px solid rgba(201,168,76,0.2); display: flex; justify-content: space-between; align-items: center; }
+.snack-breakdown { padding: 20px 32px; border-top: 1px solid var(--border); }
+.snack-breakdown-title { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; font-family: 'JetBrains Mono', monospace; }
+.snack-person-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.snack-person-row:last-child { border-bottom: none; }
+.snack-person-label { font-size: 12px; color: var(--muted); }
+.snack-person-name { font-size: 13px; color: var(--white); }
+.snack-person-price { font-size: 13px; color: var(--gold); font-family: 'JetBrains Mono', monospace; }
 .pay-card { background: var(--card); border: 1px solid var(--border); border-radius: 2px; padding: 32px; position: sticky; top: 90px; }
 .pay-title { font-family: 'Cormorant Garamond', serif; font-size: 28px; color: var(--white); margin-bottom: 28px; }
 .method-grid { display: grid; gap: 10px; margin-bottom: 28px; }
@@ -68,18 +75,35 @@
                     <span class="order-key">Ticket Price</span>
                     <span class="order-val">₹{{ booking.ticket_price }} × {{ booking.seats }} = <strong style="color:var(--gold);">₹{{ booking.ticket_price * booking.seats }}</strong></span>
                 </div>
-                <div class="order-row">
-                    <span class="order-key">Snacks</span>
-                    <span class="order-val">
-                        {% if booking.snack_name != 'None' %}
-                            {{ booking.snack_name }}
-                            {% if booking.snack_price > 0 %} — <strong style="color:var(--gold);">₹{{ booking.snack_price }}</strong>{% endif %}
-                        {% else %}
-                            <span style="color:var(--muted); font-style:italic;">None selected</span>
-                        {% endif %}
-                    </span>
-                </div>
             </div>
+
+            <!-- Per Person Snack Breakdown -->
+            {% if booking.snack_details %}
+            {% set has_snacks = booking.snack_details | selectattr('snack_id') | list %}
+            {% if has_snacks %}
+            <div class="snack-breakdown">
+                <div class="snack-breakdown-title">🍿 Snacks Per Person</div>
+                {% for sd in booking.snack_details %}
+                <div class="snack-person-row">
+                    <div>
+                        <div class="snack-person-label">Person {{ sd.person }}</div>
+                        <div class="snack-person-name">
+                            {% if sd.snack_id %}
+                                {{ sd.snack_name }}
+                            {% else %}
+                                <span style="color:var(--muted); font-style:italic;">No snack</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="snack-person-price">
+                        {% if sd.snack_id %}₹{{ sd.price }}{% else %}—{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endif %}
+
             <div class="order-total">
                 <span style="font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--muted);">Total Amount</span>
                 <span style="font-family:'Cormorant Garamond',serif; font-size:36px; color:var(--gold);">₹{{ booking.total }}</span>

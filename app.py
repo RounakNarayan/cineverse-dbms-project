@@ -1,4 +1,3 @@
-
 # ============================================================
 #  CineVerse — Cinema Management System
 #  File: app.py
@@ -26,22 +25,19 @@ import hashlib
 # ── App Configuration ──────────────────────────────────────────────────────────
 
 app = Flask(__name__)
-app.secret_key = 'cinema_secret_key_2024'   # Change this in production
+app.secret_key = 'cinema_secret_key_2024'
 
-# Path to SQLite database file
 DB_PATH = os.path.join(os.path.dirname(__file__), 'instance', 'cinema.db')
 
 
 # ── Helper Functions ───────────────────────────────────────────────────────────
 
 def get_db():
-    """Open a new database connection. Rows returned as dict-like objects."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
 def hash_password(password):
-    """Hash a plain-text password using SHA-256 before storing in DB."""
     return hashlib.sha256(password.encode()).hexdigest()
 
 
@@ -51,16 +47,18 @@ def hash_password(password):
 
 @app.route('/')
 def index():
-    """Root URL — redirect to login page."""
-    return redirect(url_for('login'))
+    return redirect(url_for('role_choice'))
+
+
+@app.route('/role-choice')
+def role_choice():
+    """Landing page — choose login type before seeing login form."""
+    return render_template('role_choice.html')
 
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """
-    GET  — Show login form.
-    POST — Validate phone + password, create session, go to role selection.
-    """
+    """Customer login page."""
     error = None
     if request.method == 'POST':
         phone    = request.form['phone']
@@ -75,17 +73,13 @@ def login():
             session['user_id']    = user['id']
             session['user_name']  = user['name']
             session['user_phone'] = user['phone']
-            return redirect(url_for('role_select'))
+            return redirect(url_for('customer'))
         error = 'Invalid phone number or password.'
     return render_template('login.html', error=error)
 
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
-    """
-    GET  — Show sign-up form.
-    POST — Register new user, redirect to login on success.
-    """
     error   = None
     success = None
     if request.method == 'POST':
@@ -109,21 +103,35 @@ def signup():
 
 @app.route('/logout')
 def logout():
-    """Clear session and redirect to login."""
     session.clear()
-    return redirect(url_for('login'))
+    return redirect(url_for('role_choice'))
 
 
 # ============================================================
-#  SECTION 3 — ROLE SELECTION
+#  SECTION 3 — HOSPITALITY LOGIN
 # ============================================================
 
-@app.route('/role-select')
-def role_select():
-    """Show role selection: Customer | Management | Hospitality Staff."""
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    return render_template('role_select.html', name=session['user_name'])
+@app.route('/hospitality-login', methods=['GET', 'POST'])
+def hospitality_login():
+    """Hospitality staff login — uses same user accounts."""
+    error = None
+    if request.method == 'POST':
+        phone    = request.form['phone']
+        password = hash_password(request.form['password'])
+        db   = get_db()
+        user = db.execute(
+            'SELECT * FROM users WHERE phone=? AND password=?',
+            (phone, password)
+        ).fetchone()
+        db.close()
+        if user:
+            session['user_id']    = user['id']
+            session['user_name']  = user['name']
+            session['user_phone'] = user['phone']
+            session['role']       = 'hospitality'
+            return redirect(url_for('hospitality'))
+        error = 'Invalid phone number or password.'
+    return render_template('hospitality_login.html', error=error)
 
 
 # ============================================================
@@ -132,26 +140,17 @@ def role_select():
 
 @app.route('/customer')
 def customer():
-    """
-    Customer booking page.
-    Loads cities + snack menu from DB on page load.
-    Halls and screens load dynamically via AJAX.
-    """
     if 'user_id' not in session:
         return redirect(url_for('login'))
     db     = get_db()
     cities = db.execute('SELECT DISTINCT city FROM halls ORDER BY city').fetchall()
-    snacks = db.execute('SELECT * FROM snack_menu ORDER BY name').fetchall()
+    snacks = db.execute('SELECT * FROM snack_menu ORDER BY category, name').fetchall()
     db.close()
     return render_template('customer.html', cities=cities, snacks=snacks)
 
 
 @app.route('/api/halls')
 def api_halls():
-    """
-    AJAX API — Return halls for a given city as JSON.
-    Query param: ?city=Mumbai
-    """
     city  = request.args.get('city')
     db    = get_db()
     halls = db.execute('SELECT id, name FROM halls WHERE city=?', (city,)).fetchall()
@@ -161,10 +160,6 @@ def api_halls():
 
 @app.route('/api/screens')
 def api_screens():
-    """
-    AJAX API — Return screens for a given hall with live seat availability.
-    Query param: ?hall_id=1
-    """
     hall_id = request.args.get('hall_id')
     db      = get_db()
     screens = db.execute('''
@@ -175,7 +170,6 @@ def api_screens():
         LEFT JOIN movies   m ON s.movie_id  = m.id
         LEFT JOIN bookings b ON b.screen_id = s.id AND b.status = 'confirmed'
         WHERE  s.hall_id = ?
-        AND    s.movie_id IS NOT NULL
         GROUP  BY s.id
     ''', (hall_id,)).fetchall()
     db.close()
@@ -184,21 +178,28 @@ def api_screens():
 
 @app.route('/customer/book', methods=['POST'])
 def book():
-    """
-    Process booking form submission.
-    Calculates total (tickets + snacks).
-    Saves to session and renders payment page.
-    """
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
+    seats = int(request.form['seats'])
+
+    # Collect snack selections per person
+    # Format: snack_person_1, snack_person_2, etc.
+    person_snacks = []
+    for i in range(1, seats + 1):
+        snack_id = request.form.get(f'snack_person_{i}') or None
+        person_snacks.append({
+            'person': i,
+            'snack_id': snack_id
+        })
+
     data = {
-        'date':      request.form['date'],
-        'city':      request.form['city'],
-        'hall_id':   request.form['hall_id'],
-        'screen_id': request.form['screen_id'],
-        'seats':     int(request.form['seats']),
-        'snack_id':  request.form.get('snack_id') or None
+        'date':         request.form['date'],
+        'city':         request.form['city'],
+        'hall_id':      request.form['hall_id'],
+        'screen_id':    request.form['screen_id'],
+        'seats':        seats,
+        'person_snacks': person_snacks
     }
 
     db     = get_db()
@@ -210,43 +211,64 @@ def book():
         WHERE  s.id = ?
     ''', (data['screen_id'],)).fetchone()
 
-    snack       = None
-    snack_price = 0
-    if data['snack_id']:
-        snack       = db.execute('SELECT * FROM snack_menu WHERE id=?', (data['snack_id'],)).fetchone()
-        snack_price = snack['price'] * data['seats']
+    # Calculate snack totals
+    snack_details = []
+    snack_total   = 0
+    for ps in person_snacks:
+        if ps['snack_id']:
+            snack = db.execute(
+                'SELECT * FROM snack_menu WHERE id=?', (ps['snack_id'],)
+            ).fetchone()
+            if snack:
+                snack_total += snack['price']
+                snack_details.append({
+                    'person':    ps['person'],
+                    'snack_id':  ps['snack_id'],
+                    'snack_name': snack['name'],
+                    'price':     snack['price']
+                })
+            else:
+                snack_details.append({
+                    'person':    ps['person'],
+                    'snack_id':  None,
+                    'snack_name': 'None',
+                    'price':     0
+                })
+        else:
+            snack_details.append({
+                'person':    ps['person'],
+                'snack_id':  None,
+                'snack_name': 'None',
+                'price':     0
+            })
 
-    ticket_total = screen['ticket_price'] * data['seats']
-    total        = ticket_total + snack_price
+    ticket_total = screen['ticket_price'] * seats
+    total        = ticket_total + snack_total
     db.close()
 
     session['pending_booking'] = {
         **data,
-        'total':        total,
-        'movie':        screen['movie'],
-        'hall':         screen['hall_name'],
-        'screen_name':  screen['name'],
-        'show_time':    screen['show_time'],
-        'snack_name':   snack['name'] if snack else 'None',
-        'ticket_price': screen['ticket_price'],
-        'snack_price':  snack_price
+        'total':         total,
+        'movie':         screen['movie'],
+        'hall':          screen['hall_name'],
+        'screen_name':   screen['name'],
+        'show_time':     screen['show_time'],
+        'ticket_price':  screen['ticket_price'],
+        'snack_details': snack_details,
+        'snack_total':   snack_total,
+        'person_snacks': person_snacks
     }
 
     return render_template(
         'payment.html',
         booking=session['pending_booking'],
         screen=dict(screen),
-        snack=dict(snack) if snack else None,
         total=total
     )
 
 
 @app.route('/customer/pay', methods=['POST'])
 def pay():
-    """
-    Confirm payment and write booking to database.
-    Inserts into: bookings, payments, snack_orders tables.
-    """
     if 'user_id' not in session or 'pending_booking' not in session:
         return redirect(url_for('login'))
 
@@ -264,11 +286,13 @@ def pay():
         (booking_id, b['total'], request.form.get('method', 'card'))
     )
 
-    if b['snack_id']:
-        db.execute(
-            'INSERT INTO snack_orders (booking_id, snack_id, quantity) VALUES (?, ?, ?)',
-            (booking_id, b['snack_id'], b['seats'])
-        )
+    # Insert individual snack orders per person
+    for sd in b['snack_details']:
+        if sd['snack_id']:
+            db.execute(
+                'INSERT INTO snack_orders (booking_id, snack_id, quantity, person_num) VALUES (?, ?, ?, ?)',
+                (booking_id, sd['snack_id'], 1, sd['person'])
+            )
 
     db.commit()
     db.close()
@@ -280,7 +304,6 @@ def pay():
 
 @app.route('/confirmation')
 def confirmation():
-    """Show the booking confirmation ticket."""
     if 'last_booking' not in session:
         return redirect(url_for('customer'))
     return render_template(
@@ -296,12 +319,7 @@ def confirmation():
 
 @app.route('/management', methods=['GET', 'POST'])
 def management():
-    """
-    GET  — Show manager login form.
-    POST — Validate manager credentials (separate from user accounts).
-    """
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
+    """Manager login — city-wise access."""
     error = None
     if request.method == 'POST':
         mgr_id   = request.form['manager_id']
@@ -315,6 +333,7 @@ def management():
         if mgr:
             session['manager_id']   = mgr['id']
             session['manager_name'] = mgr['name']
+            session['manager_city'] = mgr['city']
             return redirect(url_for('management_dashboard'))
         error = 'Invalid Manager ID or Password.'
     return render_template('management_login.html', error=error)
@@ -322,21 +341,25 @@ def management():
 
 @app.route('/management/dashboard')
 def management_dashboard():
-    """Show all cinema halls across all cities."""
+    """Show only halls in the manager's assigned city."""
     if 'manager_id' not in session:
         return redirect(url_for('management'))
     db    = get_db()
-    halls = db.execute('SELECT * FROM halls ORDER BY city, name').fetchall()
+    halls = db.execute(
+        'SELECT * FROM halls WHERE city=? ORDER BY name',
+        (session['manager_city'],)
+    ).fetchall()
     db.close()
-    return render_template('management_dashboard.html', halls=halls, manager=session['manager_name'])
+    return render_template(
+        'management_dashboard.html',
+        halls=halls,
+        manager=session['manager_name'],
+        city=session['manager_city']
+    )
 
 
 @app.route('/management/hall/<int:hall_id>')
 def management_hall(hall_id):
-    """
-    Show all screens inside a specific hall.
-    Includes booking counts, seats sold, current movie, show time.
-    """
     if 'manager_id' not in session:
         return redirect(url_for('management'))
     db      = get_db()
@@ -358,7 +381,6 @@ def management_hall(hall_id):
 
 @app.route('/management/screen/<int:screen_id>/bookings')
 def screen_bookings(screen_id):
-    """Show all confirmed bookings for a specific screen."""
     if 'manager_id' not in session:
         return redirect(url_for('management'))
     db       = get_db()
@@ -371,24 +393,37 @@ def screen_bookings(screen_id):
     ''', (screen_id,)).fetchone()
     bookings = db.execute('''
         SELECT b.*, u.name AS customer, u.phone,
-               p.amount, p.method,
-               GROUP_CONCAT(sm.name) AS snacks
+               p.amount, p.method
         FROM   bookings b
-        JOIN   users       u  ON b.user_id    = u.id
-        LEFT JOIN payments    p  ON p.booking_id = b.id
-        LEFT JOIN snack_orders so ON so.booking_id = b.id
-        LEFT JOIN snack_menu  sm ON sm.id = so.snack_id
+        JOIN   users    u  ON b.user_id    = u.id
+        LEFT JOIN payments p  ON p.booking_id = b.id
         WHERE  b.screen_id = ? AND b.status = 'confirmed'
-        GROUP  BY b.id
         ORDER  BY b.id DESC
     ''', (screen_id,)).fetchall()
+
+    # Get snack orders per booking
+    booking_snacks = {}
+    for bk in bookings:
+        snacks = db.execute('''
+            SELECT so.person_num, sm.name, sm.price
+            FROM   snack_orders so
+            JOIN   snack_menu   sm ON so.snack_id = sm.id
+            WHERE  so.booking_id = ?
+            ORDER  BY so.person_num
+        ''', (bk['id'],)).fetchall()
+        booking_snacks[bk['id']] = [dict(s) for s in snacks]
+
     db.close()
-    return render_template('screen_bookings.html', screen=screen, bookings=bookings)
+    return render_template(
+        'screen_bookings.html',
+        screen=screen,
+        bookings=bookings,
+        booking_snacks=booking_snacks
+    )
 
 
 @app.route('/management/screen/<int:screen_id>/change-movie', methods=['POST'])
 def change_movie(screen_id):
-    """Update the movie playing on a given screen."""
     if 'manager_id' not in session:
         return redirect(url_for('management'))
     movie_id = request.form['movie_id']
@@ -406,13 +441,8 @@ def change_movie(screen_id):
 
 @app.route('/hospitality')
 def hospitality():
-    """
-    Hospitality staff dashboard.
-    Shows: live clock, today's show schedule with intermission times,
-    and snack delivery queue for all screens.
-    """
     if 'user_id' not in session:
-        return redirect(url_for('login'))
+        return redirect(url_for('hospitality_login'))
 
     db  = get_db()
     now = datetime.now()
@@ -434,7 +464,8 @@ def hospitality():
     snack_deliveries = db.execute('''
         SELECT b.id AS booking_id, u.name AS customer, b.seats_booked,
                s.name AS screen, h.name AS hall,
-               sm.name AS snack, sm.category, so.quantity, b.booking_date
+               sm.name AS snack, sm.category, so.quantity,
+               so.person_num, b.booking_date
         FROM   snack_orders so
         JOIN   bookings    b  ON so.booking_id = b.id
         JOIN   users       u  ON b.user_id     = u.id
@@ -442,7 +473,7 @@ def hospitality():
         JOIN   halls       h  ON s.hall_id     = h.id
         JOIN   snack_menu  sm ON so.snack_id   = sm.id
         WHERE  b.booking_date = ? AND b.status = 'confirmed'
-        ORDER  BY h.name, s.name
+        ORDER  BY h.name, s.name, so.person_num
     ''', (now.strftime('%Y-%m-%d'),)).fetchall()
 
     db.close()
@@ -458,6 +489,4 @@ def hospitality():
 
 if __name__ == '__main__':
     os.makedirs('instance', exist_ok=True)
-    from init_db import init_db
-    init_db()
     app.run(debug=True, port=5000)

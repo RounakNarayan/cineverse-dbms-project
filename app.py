@@ -1,3 +1,4 @@
+
 # ============================================================
 #  CineVerse — Cinema Management System
 #  File: app.py
@@ -174,6 +175,7 @@ def api_screens():
         LEFT JOIN movies   m ON s.movie_id  = m.id
         LEFT JOIN bookings b ON b.screen_id = s.id AND b.status = 'confirmed'
         WHERE  s.hall_id = ?
+        AND    s.movie_id IS NOT NULL
         GROUP  BY s.id
     ''', (hall_id,)).fetchall()
     db.close()
@@ -456,4 +458,6 @@ def hospitality():
 
 if __name__ == '__main__':
     os.makedirs('instance', exist_ok=True)
+    from init_db import init_db
+    init_db()
     app.run(debug=True, port=5000)

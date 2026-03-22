@@ -1,0 +1,89 @@
+<!--
+  CineVerse — Role Choice Page
+  File: templates/role_choice.html
+  Description: First page the user sees.
+               Choose login type before seeing login form.
+               Customer | Management | Hospitality Staff
+-->
+{% extends "base.html" %}
+{% block title %}Welcome — CineVerse{% endblock %}
+{% block extra_css %}
+<style>
+.choice-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--black); }
+.choice-wrap { text-align: center; max-width: 900px; width: 100%; padding: 40px 24px; }
+.brand { font-family: 'Cormorant Garamond', serif; font-size: 80px; font-weight: 300; color: var(--gold); letter-spacing: -2px; line-height: 1; animation: fadeDown 0.8s ease both; }
+.brand span { color: var(--white); }
+.tagline { font-size: 12px; letter-spacing: 6px; text-transform: uppercase; color: var(--muted); margin-top: 16px; margin-bottom: 70px; animation: fadeDown 0.8s 0.1s ease both; }
+.divider-line { width: 60px; height: 1px; background: var(--gold); margin: 0 auto 70px; opacity: 0.4; animation: fadeDown 0.8s 0.15s ease both; }
+.choose-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 4px; color: var(--muted); text-transform: uppercase; margin-bottom: 32px; animation: fadeUp 0.8s 0.2s ease both; }
+.choice-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; animation: fadeUp 0.8s 0.3s ease both; }
+.choice-card { background: var(--card); border: 1px solid var(--border); border-radius: 2px; padding: 44px 28px; text-decoration: none; color: inherit; transition: all 0.35s; position: relative; overflow: hidden; }
+.choice-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, var(--gold-dim) 0%, transparent 60%); opacity: 0; transition: opacity 0.35s; }
+.choice-card:hover { border-color: var(--gold); transform: translateY(-6px); box-shadow: 0 20px 60px rgba(201,168,76,0.08); }
+.choice-card:hover::before { opacity: 1; }
+.choice-icon { font-size: 44px; margin-bottom: 24px; display: block; }
+.choice-name { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 400; color: var(--white); margin-bottom: 12px; }
+.choice-desc { font-size: 12px; color: var(--muted); line-height: 1.7; }
+.choice-enter { display: inline-block; margin-top: 28px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--gold); opacity: 0; transition: opacity 0.25s, transform 0.25s; transform: translateX(-8px); }
+.choice-card:hover .choice-enter { opacity: 1; transform: translateX(0); }
+.film-dots { display: flex; gap: 6px; justify-content: center; margin-top: 60px; animation: fadeUp 0.8s 0.4s ease both; }
+.film-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--border); }
+.film-dot.active { background: var(--gold); }
+@keyframes fadeDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeUp   { from { opacity: 0; transform: translateY(20px);  } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 768px) { .choice-cards { grid-template-columns: 1fr; } .brand { font-size: 52px; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="choice-page">
+    <div class="choice-wrap">
+
+        <!-- Brand -->
+        <div class="brand">CINE<span>VERSE</span></div>
+        <div class="tagline">Premium Cinema Experience</div>
+        <div class="divider-line"></div>
+
+        <!-- Choose Role -->
+        <div class="choose-label">&#9670; Select Your Role to Continue &#9670;</div>
+
+        <div class="choice-cards">
+
+            <!-- Customer -->
+            <a href="{{ url_for('login') }}" class="choice-card">
+                <span class="choice-icon">🎬</span>
+                <div class="choice-name">Customer</div>
+                <div class="choice-desc">Book tickets, choose seats, pre-order snacks and enjoy the ultimate cinema experience.</div>
+                <div class="choice-enter">Enter →</div>
+            </a>
+
+            <!-- Management -->
+            <a href="{{ url_for('management') }}" class="choice-card">
+                <span class="choice-icon">🏛️</span>
+                <div class="choice-name">Management</div>
+                <div class="choice-desc">City-wise manager access to oversee halls, screens, movies and monitor all bookings.</div>
+                <div class="choice-enter">Enter →</div>
+            </a>
+
+            <!-- Hospitality -->
+            <a href="{{ url_for('hospitality_login') }}" class="choice-card">
+                <span class="choice-icon">🍿</span>
+                <div class="choice-name">Hospitality Staff</div>
+                <div class="choice-desc">View show schedules, intermission timings and manage snack deliveries to seats.</div>
+                <div class="choice-enter">Enter →</div>
+            </a>
+
+        </div>
+
+        <!-- Decorative dots -->
+        <div class="film-dots">
+            <div class="film-dot active"></div>
+            <div class="film-dot"></div>
+            <div class="film-dot"></div>
+            <div class="film-dot"></div>
+            <div class="film-dot active"></div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

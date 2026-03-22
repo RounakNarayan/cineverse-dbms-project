@@ -2,10 +2,10 @@
   CineVerse — Customer Booking Page
   File: templates/customer.html
   Description: 4-step booking form.
-               Step 1: Date & City
+               Step 1: Date & City (with search filter)
                Step 2: Hall & Screen (loaded via AJAX)
                Step 3: Number of seats
-               Step 4: Pre-book snacks
+               Step 4: Snacks per person (each person picks their own)
                Live booking summary shown in sidebar.
 -->
 {% extends "base.html" %}
@@ -34,17 +34,25 @@
 .side-val { color: var(--white); font-weight: 500; }
 .total-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
 .total-amount { font-family: 'Cormorant Garamond', serif; font-size: 32px; color: var(--gold); }
+.city-search-wrap { position: relative; }
+.city-search { width: 100%; background: var(--deep); border: 1px solid var(--border); color: var(--text); padding: 14px 18px; font-family: 'Syne', sans-serif; font-size: 14px; border-radius: 1px; outline: none; transition: border-color 0.2s; }
+.city-search:focus { border-color: var(--gold); }
+.city-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: var(--deep); border: 1px solid var(--border); border-top: none; z-index: 50; display: none; max-height: 200px; overflow-y: auto; }
+.city-option { padding: 12px 18px; cursor: pointer; font-size: 14px; color: var(--text); transition: background 0.15s; }
+.city-option:hover { background: var(--gold-dim); color: var(--gold); }
+.person-snack-block { border: 1px solid var(--border); border-radius: 2px; padding: 20px; margin-bottom: 16px; }
+.person-title { font-size: 12px; font-weight: 600; color: var(--gold); letter-spacing: 2px; text-transform: uppercase; font-family: 'JetBrains Mono', monospace; margin-bottom: 16px; }
 .snack-grid { display: grid; gap: 8px; }
-.snack-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 2px; cursor: pointer; transition: all 0.2s; }
+.snack-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 2px; cursor: pointer; transition: all 0.2s; }
 .snack-item:hover { border-color: rgba(201,168,76,0.3); }
 .snack-item.selected { border-color: var(--gold); background: var(--gold-dim); }
 .snack-item input[type=radio] { display: none; }
 .snack-dot { width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; }
 .snack-item.selected .snack-dot { background: var(--gold); border-color: var(--gold); }
-.snack-name { flex: 1; font-size: 13px; color: var(--text); }
-.snack-price { font-size: 12px; color: var(--gold); font-family: 'JetBrains Mono', monospace; }
+.snack-name { flex: 1; font-size: 12px; color: var(--text); }
+.snack-price { font-size: 11px; color: var(--gold); font-family: 'JetBrains Mono', monospace; }
 .avail-good { color: #70c070; }
-.avail-low { color: #e0a070; }
+.avail-low  { color: #e0a070; }
 @media (max-width: 900px) { .booking-layout { grid-template-columns: 1fr; } .side-card { position: static; } }
 </style>
 {% endblock %}
@@ -75,13 +83,16 @@
                         <input type="date" name="date" id="dateInput" required>
                     </div>
                     <div class="form-group" style="margin:0;">
-                        <label>Select City</label>
-                        <select name="city" id="citySelect" required onchange="loadHalls()">
-                            <option value="">— Choose a city —</option>
-                            {% for city in cities %}
-                            <option value="{{ city['city'] }}">{{ city['city'] }}</option>
-                            {% endfor %}
-                        </select>
+                        <label>Search City</label>
+                        <input type="hidden" name="city" id="cityHidden" required>
+                        <div class="city-search-wrap">
+                            <input type="text" class="city-search" id="citySearch" placeholder="Type to search city..." autocomplete="off" oninput="filterCities()" onfocus="showDropdown()" onblur="hideDropdown()">
+                            <div class="city-dropdown" id="cityDropdown">
+                                {% for city in cities %}
+                                <div class="city-option" onmousedown="selectCity('{{ city['city'] }}')">{{ city['city'] }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -120,7 +131,7 @@
                 </div>
                 <div class="form-group" style="margin:0;">
                     <label>Seats Required</label>
-                    <select name="seats" id="seatsSelect" required onchange="updateTotal()">
+                    <select name="seats" id="seatsSelect" required onchange="updateSeats()">
                         <option value="">— Select seats —</option>
                         {% for i in range(1, 11) %}
                         <option value="{{ i }}">{{ i }} seat{% if i > 1 %}s{% endif %}</option>
@@ -129,32 +140,17 @@
                 </div>
             </div>
 
-            <!-- STEP 4: Snacks -->
-            <div class="card" style="margin-bottom:24px;">
+            <!-- STEP 4: Snacks per person -->
+            <div class="card" style="margin-bottom:24px;" id="snacksSection" style="display:none;">
                 <div class="step-row">
                     <div class="step-num">4</div>
                     <div>
                         <div style="font-size:10px; letter-spacing:3px; color:var(--gold); font-family:'JetBrains Mono',monospace;">STEP FOUR</div>
-                        <div style="font-size:16px; font-weight:600; color:var(--white);">Pre-Book Snacks <span style="font-size:11px; color:var(--muted); font-weight:400;">(Optional)</span></div>
+                        <div style="font-size:16px; font-weight:600; color:var(--white);">Snacks Per Person <span style="font-size:11px; color:var(--muted); font-weight:400;">(Optional)</span></div>
                     </div>
                 </div>
-                <p style="font-size:12px; color:var(--muted); margin-bottom:20px;">Snacks will be delivered to your seats during intermission.</p>
-                <div class="snack-grid">
-                    <div class="snack-item selected" onclick="selectSnack(this, '')">
-                        <input type="radio" name="snack_id" value="" checked>
-                        <div class="snack-dot"></div>
-                        <div class="snack-name" style="color:var(--muted); font-style:italic;">No snacks — I'll decide at the counter</div>
-                        <div class="snack-price">—</div>
-                    </div>
-                    {% for snack in snacks %}
-                    <div class="snack-item" onclick="selectSnack(this, '{{ snack['id'] }}')">
-                        <input type="radio" name="snack_id" value="{{ snack['id'] }}">
-                        <div class="snack-dot"></div>
-                        <div class="snack-name">{{ snack['name'] }} <span style="font-size:10px; color:var(--muted);">({{ snack['category'] }})</span></div>
-                        <div class="snack-price">₹{{ snack['price'] }}</div>
-                    </div>
-                    {% endfor %}
-                </div>
+                <p style="font-size:12px; color:var(--muted); margin-bottom:24px;">Each person can choose their own snack. Snacks will be delivered to your seats during intermission.</p>
+                <div id="personSnacksContainer"></div>
             </div>
 
         </div>
@@ -169,7 +165,6 @@
             <div class="side-row"><span class="side-key">Movie</span><span class="side-val" id="sumMovie">—</span></div>
             <div class="side-row"><span class="side-key">Show Time</span><span class="side-val" id="sumTime">—</span></div>
             <div class="side-row"><span class="side-key">Seats</span><span class="side-val" id="sumSeats">—</span></div>
-            <div class="side-row"><span class="side-key">Snacks</span><span class="side-val" id="sumSnack">None</span></div>
             <div class="side-row"><span class="side-key">Ticket Total</span><span class="side-val" id="sumTickets">₹0</span></div>
             <div class="side-row"><span class="side-key">Snack Total</span><span class="side-val" id="sumSnackTotal">₹0</span></div>
             <hr class="divider" style="margin:16px 0;">
@@ -189,35 +184,81 @@
 
 {% block extra_js %}
 <script>
+    // Snack data from server
+    const snacks = [
+        {% for snack in snacks %}
+        { id: {{ snack['id'] }}, name: "{{ snack['name'] }}", category: "{{ snack['category'] }}", price: {{ snack['price'] }} },
+        {% endfor %}
+    ];
+
+    const cities = [{% for city in cities %}"{{ city['city'] }}",{% endfor %}];
+
+    // Set today's date
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('dateInput').min   = today;
     document.getElementById('dateInput').value = today;
     document.getElementById('sumDate').textContent = today;
 
-    let selectedTicketPrice = 0;
-    let selectedSnackPrice  = 0;
-
     document.getElementById('dateInput').addEventListener('change', function() {
         document.getElementById('sumDate').textContent = this.value || '—';
     });
 
-    async function loadHalls() {
-        const city    = document.getElementById('citySelect').value;
+    let selectedTicketPrice = 0;
+    let snackPrices = {};
+
+    // ── City Search ──────────────────────────────────────────────────
+    function filterCities() {
+        const query    = document.getElementById('citySearch').value.toLowerCase();
+        const options  = document.querySelectorAll('.city-option');
+        const dropdown = document.getElementById('cityDropdown');
+        let hasMatch   = false;
+        options.forEach(opt => {
+            const match = opt.textContent.toLowerCase().includes(query);
+            opt.style.display = match ? 'block' : 'none';
+            if (match) hasMatch = true;
+        });
+        dropdown.style.display = hasMatch ? 'block' : 'none';
+        // Clear city if user types something different
+        if (!cities.includes(document.getElementById('citySearch').value)) {
+            document.getElementById('cityHidden').value = '';
+        }
+    }
+
+    function showDropdown() {
+        document.getElementById('cityDropdown').style.display = 'block';
+    }
+
+    function hideDropdown() {
+        setTimeout(() => {
+            document.getElementById('cityDropdown').style.display = 'none';
+        }, 200);
+    }
+
+    function selectCity(city) {
+        document.getElementById('citySearch').value  = city;
+        document.getElementById('cityHidden').value  = city;
+        document.getElementById('sumCity').textContent = city;
+        document.getElementById('cityDropdown').style.display = 'none';
+        loadHalls(city);
+    }
+
+    // ── Load Halls ───────────────────────────────────────────────────
+    async function loadHalls(city) {
         const hallSel = document.getElementById('hallSelect');
-        document.getElementById('sumCity').textContent = city || '—';
-        hallSel.disabled = !city;
+        hallSel.disabled = true;
         hallSel.innerHTML = '<option value="">— Loading... —</option>';
-        if (!city) return;
         const res   = await fetch(`/api/halls?city=${encodeURIComponent(city)}`);
         const halls = await res.json();
         hallSel.innerHTML = '<option value="">— Choose a hall —</option>';
         halls.forEach(h => hallSel.innerHTML += `<option value="${h.id}">${h.name}</option>`);
-        document.getElementById('screensContainer').style.display  = 'none';
+        hallSel.disabled = false;
+        document.getElementById('screensContainer').style.display   = 'none';
         document.getElementById('screensPlaceholder').style.display = 'block';
         document.getElementById('screenIdInput').value = '';
         checkProceed();
     }
 
+    // ── Load Screens ─────────────────────────────────────────────────
     async function loadScreens() {
         const hallId   = document.getElementById('hallSelect').value;
         const hallText = document.getElementById('hallSelect').selectedOptions[0]?.text || '—';
@@ -240,51 +281,92 @@
                 <div class="screen-price">₹${s.ticket_price}</div>
             </label>`;
         });
-        document.getElementById('screensContainer').style.display  = 'block';
+        document.getElementById('screensContainer').style.display   = 'block';
         document.getElementById('screensPlaceholder').style.display = 'none';
     }
 
+    // ── Select Screen ────────────────────────────────────────────────
     function selectScreen(el, id, name, movie, time, price) {
         document.querySelectorAll('.screen-card').forEach(c => c.classList.remove('selected'));
         el.classList.add('selected');
-        document.getElementById('screenIdInput').value       = id;
-        document.getElementById('sumScreen').textContent     = name;
-        document.getElementById('sumMovie').textContent      = movie;
-        document.getElementById('sumTime').textContent       = time;
+        document.getElementById('screenIdInput').value   = id;
+        document.getElementById('sumScreen').textContent = name;
+        document.getElementById('sumMovie').textContent  = movie;
+        document.getElementById('sumTime').textContent   = time;
         selectedTicketPrice = price;
         updateTotal();
         checkProceed();
     }
 
-    function selectSnack(el, id) {
-        document.querySelectorAll('.snack-item').forEach(s => s.classList.remove('selected'));
-        el.classList.add('selected');
-        el.querySelector('input[type=radio]').checked = true;
-        const priceText = el.querySelector('.snack-price').textContent;
-        selectedSnackPrice = priceText === '—' ? 0 : parseFloat(priceText.replace('₹', ''));
-        const snackName = el.querySelector('.snack-name').textContent.trim().split('(')[0].trim();
-        document.getElementById('sumSnack').textContent = id ? snackName : 'None';
+    // ── Update Seats & Render Per-Person Snack Pickers ───────────────
+    function updateSeats() {
+        const seats = parseInt(document.getElementById('seatsSelect').value) || 0;
+        document.getElementById('sumSeats').textContent = seats ? `${seats} seat${seats > 1 ? 's' : ''}` : '—';
+        renderPersonSnacks(seats);
         updateTotal();
-    }
-
-    function updateTotal() {
-        const seats       = parseInt(document.getElementById('seatsSelect').value) || 0;
-        const ticketTotal = seats * selectedTicketPrice;
-        const snackTotal  = seats * selectedSnackPrice;
-        document.getElementById('sumSeats').textContent      = seats ? `${seats} seat${seats > 1 ? 's' : ''}` : '—';
-        document.getElementById('sumTickets').textContent    = `₹${ticketTotal}`;
-        document.getElementById('sumSnackTotal').textContent = `₹${snackTotal}`;
-        document.getElementById('sumTotal').textContent      = `₹${ticketTotal + snackTotal}`;
         checkProceed();
     }
 
+    function renderPersonSnacks(seats) {
+        const container = document.getElementById('personSnacksContainer');
+        container.innerHTML = '';
+        snackPrices = {};
+        if (seats <= 0) return;
+
+        for (let i = 1; i <= seats; i++) {
+            snackPrices[i] = 0;
+            let snackOptions = `
+            <div class="snack-item selected" onclick="selectSnack(this, ${i}, '', 0)">
+                <input type="radio" name="snack_person_${i}" value="" checked>
+                <div class="snack-dot"></div>
+                <div class="snack-name" style="color:var(--muted); font-style:italic;">No snack</div>
+                <div class="snack-price">—</div>
+            </div>`;
+            snacks.forEach(s => {
+                snackOptions += `
+                <div class="snack-item" onclick="selectSnack(this, ${i}, '${s.id}', ${s.price})">
+                    <input type="radio" name="snack_person_${i}" value="${s.id}">
+                    <div class="snack-dot"></div>
+                    <div class="snack-name">${s.name} <span style="font-size:10px; color:var(--muted);">(${s.category})</span></div>
+                    <div class="snack-price">₹${s.price}</div>
+                </div>`;
+            });
+
+            container.innerHTML += `
+            <div class="person-snack-block">
+                <div class="person-title">🎟 Person ${i}</div>
+                <div class="snack-grid">${snackOptions}</div>
+            </div>`;
+        }
+    }
+
+    // ── Select Snack for a Person ────────────────────────────────────
+    function selectSnack(el, personNum, snackId, price) {
+        const block = el.closest('.person-snack-block');
+        block.querySelectorAll('.snack-item').forEach(s => s.classList.remove('selected'));
+        el.classList.add('selected');
+        el.querySelector('input[type=radio]').checked = true;
+        snackPrices[personNum] = price;
+        updateTotal();
+    }
+
+    // ── Update Total ─────────────────────────────────────────────────
+    function updateTotal() {
+        const seats       = parseInt(document.getElementById('seatsSelect').value) || 0;
+        const ticketTotal = seats * selectedTicketPrice;
+        const snackTotal  = Object.values(snackPrices).reduce((a, b) => a + b, 0);
+        document.getElementById('sumTickets').textContent    = `₹${ticketTotal}`;
+        document.getElementById('sumSnackTotal').textContent = `₹${snackTotal}`;
+        document.getElementById('sumTotal').textContent      = `₹${ticketTotal + snackTotal}`;
+    }
+
+    // ── Check Proceed Button ─────────────────────────────────────────
     function checkProceed() {
         const ready = document.getElementById('screenIdInput').value &&
                       document.getElementById('seatsSelect').value &&
-                      document.getElementById('dateInput').value;
+                      document.getElementById('dateInput').value &&
+                      document.getElementById('cityHidden').value;
         document.getElementById('proceedBtn').disabled = !ready;
     }
-
-    document.getElementById('seatsSelect').addEventListener('change', () => { updateTotal(); checkProceed(); });
 </script>
 {% endblock %}

@@ -1,11 +1,12 @@
 <!--
-  CineVerse — Login Page
+  CineVerse — Customer Login Page
   File: templates/login.html
-  Description: Login form with phone number + password.
-               Split-screen layout with animated film strip visual.
+  Description: Login form for customers only.
+               Phone number + password.
+               Link to signup for new users.
 -->
 {% extends "base.html" %}
-{% block title %}Login — CineVerse{% endblock %}
+{% block title %}Customer Login — CineVerse{% endblock %}
 {% block extra_css %}
 <style>
 .auth-wrap { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
@@ -16,9 +17,12 @@
 .film-hole { width: 40px; height: 30px; margin: 4px auto; border: 2px solid var(--gold); border-radius: 4px; flex-shrink: 0; }
 .cinema-title { font-family: 'Cormorant Garamond', serif; font-size: 72px; font-weight: 300; color: var(--gold); line-height: 0.9; letter-spacing: -2px; position: relative; z-index: 1; animation: fadeUp 0.8s ease both; }
 .cinema-sub { font-size: 11px; letter-spacing: 6px; color: var(--muted); text-transform: uppercase; margin-top: 20px; position: relative; z-index: 1; }
-.star-row { display: flex; gap: 8px; margin-top: 40px; position: relative; z-index: 1; }
+.role-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--gold-dim); border: 1px solid rgba(201,168,76,0.3); border-radius: 1px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); margin-top: 32px; position: relative; z-index: 1; }
+.star-row { display: flex; gap: 8px; margin-top: 32px; position: relative; z-index: 1; }
 .star { width: 4px; height: 4px; background: var(--gold); border-radius: 50%; opacity: 0.6; }
 .auth-form-wrap { display: flex; flex-direction: column; justify-content: center; padding: 60px; background: var(--black); }
+.back-link { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); text-decoration: none; font-size: 12px; letter-spacing: 1px; margin-bottom: 40px; transition: color 0.2s; }
+.back-link:hover { color: var(--gold); }
 .tab-row { display: flex; margin-bottom: 40px; border-bottom: 1px solid var(--border); }
 .tab { padding: 14px 28px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.2s; }
 .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
@@ -28,16 +32,19 @@
 @media (max-width: 768px) { .auth-wrap { grid-template-columns: 1fr; } .auth-visual { display: none; } .auth-form-wrap { padding: 40px 24px; } }
 </style>
 {% endblock %}
+
 {% block content %}
 <div class="auth-wrap">
     <div class="auth-visual">
         <div class="film-strip left">{% for i in range(30) %}<div class="film-hole"></div>{% endfor %}</div>
         <div class="cinema-title">CINE<br>VERSE</div>
         <div class="cinema-sub">Premium Cinema Experience</div>
+        <div class="role-badge">🎬 Customer Portal</div>
         <div class="star-row">{% for i in range(5) %}<div class="star"></div>{% endfor %}</div>
         <div class="film-strip right">{% for i in range(30) %}<div class="film-hole"></div>{% endfor %}</div>
     </div>
     <div class="auth-form-wrap">
+        <a href="{{ url_for('role_choice') }}" class="back-link">← Back to Role Selection</a>
         <div class="tab-row">
             <a class="tab active" href="{{ url_for('login') }}">Login</a>
             <a class="tab" href="{{ url_for('signup') }}">Sign Up</a>

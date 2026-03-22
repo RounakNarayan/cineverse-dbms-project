@@ -3,14 +3,14 @@
   File: templates/confirmation.html
   Description: Shown after successful payment.
                Displays a styled cinema ticket with all
-               booking details: movie, hall, screen, seats, snacks, amount paid.
+               booking details including per-person snack orders.
 -->
 {% extends "base.html" %}
 {% block title %}Booking Confirmed — CineVerse{% endblock %}
 {% block extra_css %}
 <style>
 .confirm-page { min-height: calc(100vh - 65px); display: flex; align-items: center; justify-content: center; padding: 60px 24px; }
-.confirm-wrap { max-width: 620px; width: 100%; }
+.confirm-wrap { max-width: 640px; width: 100%; }
 .success-badge { text-align: center; margin-bottom: 40px; animation: popIn 0.6s cubic-bezier(0.34,1.56,0.64,1) both; }
 .success-circle { width: 80px; height: 80px; border-radius: 50%; background: rgba(39,174,96,0.1); border: 2px solid rgba(39,174,96,0.3); display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 20px; }
 .success-title { font-family: 'Cormorant Garamond', serif; font-size: 42px; font-weight: 300; color: var(--white); margin-bottom: 8px; }
@@ -25,9 +25,15 @@
 .ticket-body { padding: 28px 36px; }
 .ticket-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
 .ticket-field { padding: 16px 0; border-bottom: 1px solid var(--border); }
-.ticket-field:last-child, .ticket-field:nth-last-child(2) { border-bottom: none; }
+.ticket-field.full { grid-column: 1 / -1; }
+.ticket-field:last-child, .ticket-field:nth-last-child(2):not(.full) { border-bottom: none; }
 .t-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; font-family: 'JetBrains Mono', monospace; }
 .t-value { font-size: 14px; color: var(--white); font-weight: 500; }
+.snack-list { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.snack-list-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding: 6px 10px; background: rgba(201,168,76,0.05); border: 1px solid var(--border); border-radius: 1px; }
+.snack-list-person { color: var(--muted); }
+.snack-list-name { color: var(--white); }
+.snack-list-price { color: var(--gold); font-family: 'JetBrains Mono', monospace; }
 .ticket-footer { padding: 20px 36px; background: var(--gold-dim); border-top: 1px dashed rgba(201,168,76,0.3); display: flex; justify-content: space-between; align-items: center; }
 .paid-amount { font-family: 'Cormorant Garamond', serif; font-size: 36px; color: var(--gold); }
 .action-row { display: flex; gap: 16px; margin-top: 28px; animation: fadeUp 0.6s 0.4s ease both; }
@@ -79,16 +85,39 @@
                         <div class="t-label">Seats Booked</div>
                         <div class="t-value">{{ booking.seats }} Seat{% if booking.seats > 1 %}s{% endif %}</div>
                     </div>
-                    <div class="ticket-field" style="grid-column: 1 / -1;">
-                        <div class="t-label">Snacks Pre-Ordered</div>
-                        <div class="t-value">
-                            {% if booking.snack_name != 'None' %}
-                                🍿 {{ booking.snack_name }} × {{ booking.seats }}
-                            {% else %}
-                                <span style="color:var(--muted); font-style:italic;">None selected</span>
+                    <div class="ticket-field">
+                        <div class="t-label">Ticket Total</div>
+                        <div class="t-value" style="color:var(--gold);">₹{{ booking.ticket_price * booking.seats }}</div>
+                    </div>
+                    <div class="ticket-field">
+                        <div class="t-label">Snack Total</div>
+                        <div class="t-value" style="color:var(--gold);">₹{{ booking.snack_total }}</div>
+                    </div>
+
+                    <!-- Per Person Snacks -->
+                    {% set has_snacks = booking.snack_details | selectattr('snack_id') | list %}
+                    {% if has_snacks %}
+                    <div class="ticket-field full">
+                        <div class="t-label">🍿 Snacks Per Person</div>
+                        <div class="snack-list">
+                            {% for sd in booking.snack_details %}
+                            {% if sd.snack_id %}
+                            <div class="snack-list-row">
+                                <span class="snack-list-person">Person {{ sd.person }}</span>
+                                <span class="snack-list-name">{{ sd.snack_name }}</span>
+                                <span class="snack-list-price">₹{{ sd.price }}</span>
+                            </div>
                             {% endif %}
+                            {% endfor %}
                         </div>
                     </div>
+                    {% else %}
+                    <div class="ticket-field full">
+                        <div class="t-label">Snacks</div>
+                        <div class="t-value" style="color:var(--muted); font-style:italic;">None selected</div>
+                    </div>
+                    {% endif %}
+
                 </div>
             </div>
             <div class="ticket-footer">
@@ -103,7 +132,7 @@
         <!-- Action Buttons -->
         <div class="action-row">
             <a href="{{ url_for('customer') }}" class="btn btn-gold">Book Another</a>
-            <a href="{{ url_for('role_select') }}" class="btn btn-outline">Go to Dashboard</a>
+            <a href="{{ url_for('role_choice') }}" class="btn btn-outline">Go to Home</a>
         </div>
 
     </div>

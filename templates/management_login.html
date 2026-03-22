@@ -1,50 +1,127 @@
 <!--
   CineVerse — Management Login Page
   File: templates/management_login.html
-  Description: Separate login form for managers.
-               Uses manager_code + password (not phone).
-               Credentials stored in the managers table.
+  Description: City-wise manager login.
+               Each city has its own manager credentials.
+               Mumbai, Delhi, Bangalore, Chennai.
 -->
 {% extends "base.html" %}
 {% block title %}Management Login — CineVerse{% endblock %}
 {% block extra_css %}
 <style>
-.mgr-page { min-height: calc(100vh - 65px); display: flex; align-items: center; justify-content: center; }
-.mgr-wrap { max-width: 480px; width: 100%; padding: 40px 24px; }
-.mgr-badge { width: 64px; height: 64px; border-radius: 2px; background: var(--gold-dim); border: 1px solid rgba(201,168,76,0.3); display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 28px; }
-.mgr-title { font-family: 'Cormorant Garamond', serif; font-size: 42px; font-weight: 300; color: var(--white); margin-bottom: 8px; }
-.mgr-sub { font-size: 13px; color: var(--muted); margin-bottom: 40px; }
-.mgr-hint { margin-top: 32px; padding: 16px; background: rgba(201,168,76,0.05); border: 1px solid var(--border); border-radius: 2px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); line-height: 1.8; }
+.auth-wrap { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
+.auth-visual { background: linear-gradient(160deg, #0d0a00 0%, #1a1200 50%, #0a0800 100%); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px; position: relative; overflow: hidden; border-right: 1px solid var(--border); }
+.auth-visual::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 70% 70% at 50% 50%, rgba(201,168,76,0.08) 0%, transparent 70%); }
+.film-strip { position: absolute; top: 0; bottom: 0; width: 60px; opacity: 0.06; display: flex; flex-direction: column; }
+.film-strip.left { left: 0; } .film-strip.right { right: 0; }
+.film-hole { width: 40px; height: 30px; margin: 4px auto; border: 2px solid var(--gold); border-radius: 4px; flex-shrink: 0; }
+.cinema-title { font-family: 'Cormorant Garamond', serif; font-size: 72px; font-weight: 300; color: var(--gold); line-height: 0.9; letter-spacing: -2px; position: relative; z-index: 1; animation: fadeUp 0.8s ease both; }
+.cinema-sub { font-size: 11px; letter-spacing: 6px; color: var(--muted); text-transform: uppercase; margin-top: 20px; position: relative; z-index: 1; }
+.role-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--gold-dim); border: 1px solid rgba(201,168,76,0.3); border-radius: 1px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); margin-top: 32px; position: relative; z-index: 1; }
+.star-row { display: flex; gap: 8px; margin-top: 32px; position: relative; z-index: 1; }
+.star { width: 4px; height: 4px; background: var(--gold); border-radius: 50%; opacity: 0.6; }
+.auth-form-wrap { display: flex; flex-direction: column; justify-content: center; padding: 60px; background: var(--black); }
+.back-link { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); text-decoration: none; font-size: 12px; letter-spacing: 1px; margin-bottom: 40px; transition: color 0.2s; }
+.back-link:hover { color: var(--gold); }
+.form-title { font-family: 'Cormorant Garamond', serif; font-size: 38px; font-weight: 300; color: var(--white); margin-bottom: 8px; }
+.form-desc { font-size: 13px; color: var(--muted); margin-bottom: 36px; }
+.city-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 32px; }
+.city-card { border: 1px solid var(--border); border-radius: 2px; padding: 14px 16px; cursor: pointer; transition: all 0.2s; }
+.city-card:hover { border-color: rgba(201,168,76,0.4); background: rgba(201,168,76,0.03); }
+.city-card.selected { border-color: var(--gold); background: var(--gold-dim); }
+.city-card input { display: none; }
+.city-name { font-size: 13px; color: var(--white); font-weight: 600; margin-bottom: 4px; }
+.city-id { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted); }
+.hint-box { margin-top: 28px; padding: 16px; background: rgba(201,168,76,0.05); border: 1px solid var(--border); border-radius: 2px; }
+.hint-title { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; font-family: 'JetBrains Mono', monospace; }
+.hint-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+.hint-row:last-child { border-bottom: none; }
+.hint-city { color: var(--gold); }
+.hint-cred { color: var(--muted); }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 768px) { .auth-wrap { grid-template-columns: 1fr; } .auth-visual { display: none; } .auth-form-wrap { padding: 40px 24px; } .city-grid { grid-template-columns: 1fr; } }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="mgr-page">
-    <div class="mgr-wrap">
-        <div class="mgr-badge">🏛️</div>
-        <div class="mgr-title">Management Access</div>
-        <div class="mgr-sub">Enter your Manager credentials to access the control dashboard.</div>
+<div class="auth-wrap">
+    <div class="auth-visual">
+        <div class="film-strip left">{% for i in range(30) %}<div class="film-hole"></div>{% endfor %}</div>
+        <div class="cinema-title">CINE<br>VERSE</div>
+        <div class="cinema-sub">Management Portal</div>
+        <div class="role-badge">🏛️ City Manager Access</div>
+        <div class="star-row">{% for i in range(5) %}<div class="star"></div>{% endfor %}</div>
+        <div class="film-strip right">{% for i in range(30) %}<div class="film-hole"></div>{% endfor %}</div>
+    </div>
+    <div class="auth-form-wrap">
+        <a href="{{ url_for('role_choice') }}" class="back-link">← Back to Role Selection</a>
+        <div class="form-title">Management Access</div>
+        <div class="form-desc">Each city has a dedicated manager. Select your city and login.</div>
 
         {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
 
-        <form method="POST" class="card">
+        <form method="POST">
+
+            <!-- City Selection -->
+            <div style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:12px;">Select Your City</div>
+            <div class="city-grid">
+                <label class="city-card" onclick="selectCity(this, 'MGR-MUM')">
+                    <input type="radio" name="_city" value="Mumbai">
+                    <div class="city-name">🏙️ Mumbai</div>
+                    <div class="city-id">MGR-MUM</div>
+                </label>
+                <label class="city-card" onclick="selectCity(this, 'MGR-DEL')">
+                    <input type="radio" name="_city" value="Delhi">
+                    <div class="city-name">🏛️ Delhi</div>
+                    <div class="city-id">MGR-DEL</div>
+                </label>
+                <label class="city-card" onclick="selectCity(this, 'MGR-BLR')">
+                    <input type="radio" name="_city" value="Bangalore">
+                    <div class="city-name">🌿 Bangalore</div>
+                    <div class="city-id">MGR-BLR</div>
+                </label>
+                <label class="city-card" onclick="selectCity(this, 'MGR-CHN')">
+                    <input type="radio" name="_city" value="Chennai">
+                    <div class="city-name">🌊 Chennai</div>
+                    <div class="city-id">MGR-CHN</div>
+                </label>
+            </div>
+
+            <!-- Manager ID (auto-filled) -->
             <div class="form-group">
                 <label>Manager ID</label>
-                <input type="text" name="manager_id" placeholder="e.g. MGR001" required>
+                <input type="text" name="manager_id" id="managerIdInput" placeholder="Select a city above" required readonly style="cursor:not-allowed; opacity:0.7;">
             </div>
+
+            <!-- Password -->
             <div class="form-group">
                 <label>Manager Password</label>
                 <input type="password" name="manager_password" placeholder="Enter manager password" required>
             </div>
+
             <button type="submit" class="btn btn-gold" style="width:100%;">Access Dashboard</button>
         </form>
 
-        <div class="mgr-hint">
-            Demo: ID = MGR001 &nbsp;|&nbsp; Password = mgr@001
+        <!-- Credentials hint -->
+        <div class="hint-box">
+            <div class="hint-title">Demo Credentials</div>
+            <div class="hint-row"><span class="hint-city">Mumbai</span><span class="hint-cred">MGR-MUM / mgr@mumbai</span></div>
+            <div class="hint-row"><span class="hint-city">Delhi</span><span class="hint-cred">MGR-DEL / mgr@delhi</span></div>
+            <div class="hint-row"><span class="hint-city">Bangalore</span><span class="hint-cred">MGR-BLR / mgr@bangalore</span></div>
+            <div class="hint-row"><span class="hint-city">Chennai</span><span class="hint-cred">MGR-CHN / mgr@chennai</span></div>
         </div>
-        <div style="margin-top:24px; text-align:center;">
-            <a href="{{ url_for('role_select') }}" style="font-size:12px; color:var(--muted);">← Back to role selection</a>
-        </div>
+
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function selectCity(el, mgrId) {
+    document.querySelectorAll('.city-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    el.querySelector('input').checked = true;
+    document.getElementById('managerIdInput').value = mgrId;
+}
+</script>
 {% endblock %}

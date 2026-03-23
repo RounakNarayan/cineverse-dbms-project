@@ -2,7 +2,7 @@
   CineVerse — Customer Booking Page
   File: templates/customer.html
   Description: 4-step booking form.
-               Step 1: Date & City (with search filter)
+               Step 1: Date & City (cities loaded via API)
                Step 2: Hall & Screen (loaded via AJAX)
                Step 3: Number of seats
                Step 4: Snacks per person (each person has own search + picker)
@@ -39,6 +39,7 @@
 .city-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: var(--deep); border: 1px solid var(--border); border-top: none; z-index: 50; display: none; max-height: 220px; overflow-y: auto; }
 .city-option { padding: 12px 18px; cursor: pointer; font-size: 14px; color: var(--text); transition: background 0.15s; }
 .city-option:hover { background: var(--gold-dim); color: var(--gold); }
+.city-loading { padding: 12px 18px; font-size: 13px; color: var(--muted); font-style: italic; }
 .person-snack-block { border: 1px solid var(--border); border-radius: 2px; padding: 20px; margin-bottom: 16px; }
 .person-title { font-size: 12px; font-weight: 600; color: var(--gold); letter-spacing: 2px; text-transform: uppercase; font-family: 'JetBrains Mono', monospace; margin-bottom: 14px; }
 .snack-search { width: 100%; background: var(--deep); border: 1px solid var(--border); color: var(--text); padding: 10px 14px; font-family: 'Syne', sans-serif; font-size: 13px; border-radius: 1px; outline: none; margin-bottom: 12px; transition: border-color 0.2s; }
@@ -90,11 +91,14 @@
                         <label>Search City</label>
                         <input type="hidden" name="city" id="cityHidden" required>
                         <div class="city-search-wrap">
-                            <input type="text" class="city-search" id="citySearch" placeholder="Type to search city..." autocomplete="off" oninput="filterCities()" onfocus="showDropdown()" onblur="hideDropdown()">
+                            <input type="text" class="city-search" id="citySearch"
+                                placeholder="Type to search city..."
+                                autocomplete="off"
+                                oninput="filterCities()"
+                                onfocus="showDropdown()"
+                                onblur="hideDropdown()">
                             <div class="city-dropdown" id="cityDropdown">
-                                {% for city in cities %}
-                                <div class="city-option" onmousedown="selectCity('{{ city['city'] }}')">{{ city['city'] }}</div>
-                                {% endfor %}
+                                <div class="city-loading">Loading cities...</div>
                             </div>
                         </div>
                     </div>
@@ -190,16 +194,13 @@
 
 {% block extra_js %}
 <script>
-    // Snack data from server
     const snacks = [
         {% for snack in snacks %}
         { id: "{{ snack['id'] }}", name: "{{ snack['name'] }}", category: "{{ snack['category'] }}", price: {{ snack['price'] }} },
         {% endfor %}
     ];
 
-    const cities = [{% for city in cities %}"{{ city['city'] }}",{% endfor %}];
-
-    // Set today's date
+    let allCities = [];
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('dateInput').min   = today;
     document.getElementById('dateInput').value = today;
@@ -212,24 +213,42 @@
     let selectedTicketPrice = 0;
     let snackPrices = {};
 
-    // ── City Search ──────────────────────────────────────────────
+    // ── Load Cities from API on page load ────────────────────────
+    async function loadCities() {
+        const dropdown = document.getElementById('cityDropdown');
+        try {
+            const res = await fetch('/api/cities');
+            allCities = await res.json();
+            renderCityOptions(allCities);
+        } catch (e) {
+            dropdown.innerHTML = '<div class="city-loading">Failed to load cities.</div>';
+        }
+    }
+
+    function renderCityOptions(cities) {
+        const dropdown = document.getElementById('cityDropdown');
+        if (cities.length === 0) {
+            dropdown.innerHTML = '<div class="city-loading">No cities found.</div>';
+            return;
+        }
+        dropdown.innerHTML = cities.map(city =>
+            `<div class="city-option" onmousedown="selectCity('${city}')">${city}</div>`
+        ).join('');
+    }
+
+    // ── City Search Filter ───────────────────────────────────────
     function filterCities() {
         const query    = document.getElementById('citySearch').value.toLowerCase();
-        const options  = document.querySelectorAll('.city-option');
-        const dropdown = document.getElementById('cityDropdown');
-        let hasMatch   = false;
-        options.forEach(opt => {
-            const match = opt.textContent.toLowerCase().includes(query);
-            opt.style.display = match ? 'block' : 'none';
-            if (match) hasMatch = true;
-        });
-        dropdown.style.display = hasMatch ? 'block' : 'none';
-        if (!cities.includes(document.getElementById('citySearch').value)) {
+        const filtered = allCities.filter(c => c.toLowerCase().includes(query));
+        renderCityOptions(filtered);
+        document.getElementById('cityDropdown').style.display = 'block';
+        if (!allCities.includes(document.getElementById('citySearch').value)) {
             document.getElementById('cityHidden').value = '';
         }
     }
 
     function showDropdown() {
+        renderCityOptions(allCities);
         document.getElementById('cityDropdown').style.display = 'block';
     }
 
@@ -240,8 +259,8 @@
     }
 
     function selectCity(city) {
-        document.getElementById('citySearch').value   = city;
-        document.getElementById('cityHidden').value   = city;
+        document.getElementById('citySearch').value    = city;
+        document.getElementById('cityHidden').value    = city;
         document.getElementById('sumCity').textContent = city;
         document.getElementById('cityDropdown').style.display = 'none';
         loadHalls(city);
@@ -325,17 +344,12 @@
             container.innerHTML += `
             <div class="person-snack-block">
                 <div class="person-title">🎟 Person ${i}</div>
-                <input
-                    type="text"
-                    class="snack-search"
-                    id="snackSearch_${i}"
-                    placeholder="🔍 Search snacks..."
-                    oninput="filterSnacks(${i})"
-                >
+                <input type="text" class="snack-search" id="snackSearch_${i}"
+                    placeholder="🔍 Search snacks by name or category..."
+                    oninput="filterSnacks(${i})">
                 <div class="snack-grid" id="snackGrid_${i}"></div>
             </div>`;
         }
-        // Render snack items for each person after DOM is ready
         for (let i = 1; i <= seats; i++) {
             renderSnackItems(i, '');
         }
@@ -349,7 +363,7 @@
             s.category.toLowerCase().includes(query.toLowerCase())
         );
         let html = `
-        <div class="snack-item selected" onclick="selectSnack(this, ${personNum}, '', 0)" id="nosnack_${personNum}">
+        <div class="snack-item selected" onclick="selectSnack(this, ${personNum}, '', 0)">
             <input type="radio" name="snack_person_${personNum}" value="" checked>
             <div class="snack-dot"></div>
             <div class="snack-name" style="color:var(--muted); font-style:italic;">No snack</div>
@@ -368,11 +382,6 @@
             html += `<div style="padding:12px; font-size:12px; color:var(--muted); text-align:center;">No snacks found.</div>`;
         }
         grid.innerHTML = html;
-        // Re-apply selected state if person already has a snack chosen
-        if (snackPrices[personNum] === 0) {
-            const noSnack = grid.querySelector(`#nosnack_${personNum}`);
-            if (noSnack) noSnack.classList.add('selected');
-        }
     }
 
     function filterSnacks(personNum) {
@@ -383,11 +392,7 @@
     // ── Select Snack for a Person ────────────────────────────────
     function selectSnack(el, personNum, snackId, price) {
         const grid = document.getElementById(`snackGrid_${personNum}`);
-        grid.querySelectorAll('.snack-item').forEach(s => {
-            s.classList.remove('selected');
-            s.querySelector('.snack-dot').style.background = '';
-            s.querySelector('.snack-dot').style.borderColor = '';
-        });
+        grid.querySelectorAll('.snack-item').forEach(s => s.classList.remove('selected'));
         el.classList.add('selected');
         el.querySelector('input[type=radio]').checked = true;
         snackPrices[personNum] = price;
@@ -412,8 +417,18 @@
                       document.getElementById('cityHidden').value;
         document.getElementById('proceedBtn').disabled = !ready;
     }
+
+    // ── Init ─────────────────────────────────────────────────────
+    loadCities();
 </script>
 {% endblock %}
 ```
 
 ---
+
+## 🎉 Both Files Done!
+
+Now restart your app locally:
+```
+Ctrl + C
+python app.py

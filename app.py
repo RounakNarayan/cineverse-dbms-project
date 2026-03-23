@@ -143,10 +143,18 @@ def customer():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     db     = get_db()
-    cities = db.execute('SELECT DISTINCT city FROM halls ORDER BY city').fetchall()
     snacks = db.execute('SELECT * FROM snack_menu ORDER BY category, name').fetchall()
     db.close()
-    return render_template('customer.html', cities=cities, snacks=snacks)
+    return render_template('customer.html', snacks=snacks)
+
+
+@app.route('/api/cities')
+def api_cities():
+    """AJAX API — Return all cities as JSON."""
+    db     = get_db()
+    cities = db.execute('SELECT DISTINCT city FROM halls ORDER BY city').fetchall()
+    db.close()
+    return jsonify([c['city'] for c in cities])
 
 
 @app.route('/api/halls')
@@ -183,8 +191,6 @@ def book():
 
     seats = int(request.form['seats'])
 
-    # Collect snack selections per person
-    # Format: snack_person_1, snack_person_2, etc.
     person_snacks = []
     for i in range(1, seats + 1):
         snack_id = request.form.get(f'snack_person_{i}') or None
@@ -194,11 +200,11 @@ def book():
         })
 
     data = {
-        'date':         request.form['date'],
-        'city':         request.form['city'],
-        'hall_id':      request.form['hall_id'],
-        'screen_id':    request.form['screen_id'],
-        'seats':        seats,
+        'date':          request.form['date'],
+        'city':          request.form['city'],
+        'hall_id':       request.form['hall_id'],
+        'screen_id':     request.form['screen_id'],
+        'seats':         seats,
         'person_snacks': person_snacks
     }
 
@@ -211,7 +217,6 @@ def book():
         WHERE  s.id = ?
     ''', (data['screen_id'],)).fetchone()
 
-    # Calculate snack totals
     snack_details = []
     snack_total   = 0
     for ps in person_snacks:
@@ -222,24 +227,24 @@ def book():
             if snack:
                 snack_total += snack['price']
                 snack_details.append({
-                    'person':    ps['person'],
-                    'snack_id':  ps['snack_id'],
+                    'person':     ps['person'],
+                    'snack_id':   ps['snack_id'],
                     'snack_name': snack['name'],
-                    'price':     snack['price']
+                    'price':      snack['price']
                 })
             else:
                 snack_details.append({
-                    'person':    ps['person'],
-                    'snack_id':  None,
+                    'person':     ps['person'],
+                    'snack_id':   None,
                     'snack_name': 'None',
-                    'price':     0
+                    'price':      0
                 })
         else:
             snack_details.append({
-                'person':    ps['person'],
-                'snack_id':  None,
+                'person':     ps['person'],
+                'snack_id':   None,
                 'snack_name': 'None',
-                'price':     0
+                'price':      0
             })
 
     ticket_total = screen['ticket_price'] * seats
@@ -286,7 +291,6 @@ def pay():
         (booking_id, b['total'], request.form.get('method', 'card'))
     )
 
-    # Insert individual snack orders per person
     for sd in b['snack_details']:
         if sd['snack_id']:
             db.execute(
@@ -401,7 +405,6 @@ def screen_bookings(screen_id):
         ORDER  BY b.id DESC
     ''', (screen_id,)).fetchall()
 
-    # Get snack orders per booking
     booking_snacks = {}
     for bk in bookings:
         snacks = db.execute('''
